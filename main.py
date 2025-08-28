@@ -1,7 +1,7 @@
 from contextlib import suppress
-from os import environ
 from traceback import format_exc
 
+from dotenv import dotenv_values
 from openai import (
     AuthenticationError,
     BadRequestError,
@@ -43,8 +43,11 @@ SYSTEM_EXCEPTIONS = (
 )
 
 
+api_key = dotenv_values(verbose=True)["OPENROUTER_API_KEY"]
+
+
 client = OpenAI(
-    api_key=environ.get("OPENROUTER_API_KEY"),
+    api_key=api_key,
     base_url="https://openrouter.ai/api/v1",
 )
 
@@ -102,7 +105,7 @@ def main() -> None:
                     break
 
         except API_EXCEPTIONS as e:
-            error_var("API error: ", e, trace=True)
+            error_var("API error: ", e)
         except SYSTEM_EXCEPTIONS as e:
             error_var("System error: ", e)
         except Exception as e:  # noqa: BLE001
