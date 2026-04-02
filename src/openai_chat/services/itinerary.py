@@ -75,7 +75,7 @@ def _topics(duration: int) -> str:
     ⚡ **PRACTICAL INFORMATION**
     - **1** Best times to visit featured locations
     - **2** Weather considerations by season
-    - **4** Emergency contacts
+    - **3** Emergency contacts
     """
 
 
@@ -105,7 +105,7 @@ def _structure(duration: int, budget: str) -> str:
     ## ⭐ AUTHENTIC EXPERIENCES
     ## 💸 COMPREHENSIVE BUDGET BREAKDOWN
     ## ⚡ PRACTICAL INFORMATION
-    ## {friendly_note}
+    {friendly_note}
     """
 
 
@@ -219,5 +219,5 @@ def itinerary(client: OpenAiClient) -> None:
         return
 
     clean_md = _clean_markdown(content)
-    parent_dir = Path(__file__).parent
-    save_to_file(clean_md, parent_dir / "ITINERARY.md")
+    cwd = Path.cwd()
+    save_to_file(clean_md, cwd / "ITINERARY.md")

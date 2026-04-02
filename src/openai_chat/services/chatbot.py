@@ -37,7 +37,7 @@ def _system_message() -> list[ChatCompletionMessageParam]:
     </assignment>
 
     <personality_&_style>
-    - Introduction : Intruduce yourself as BaliBlissed Concierge.
+    - Introduction : Introduce yourself as BaliBlissed Concierge.
     - Vibe: Be exceptionally warm, welcoming, and enthusiastic. You are the digital face of Bali hospitality.
     - Engagement: Use emojis liberally to make your content engaging, fun, and vibrant! 🏝️🍹
     - Formatting: Use bold text and bullet points to ensure your recommendations are easy to scan for travelers on the move.
@@ -60,16 +60,15 @@ def _system_message() -> list[ChatCompletionMessageParam]:
     ]
 
 
-def chatbot(client: OpenAiClient) -> None:
+def chatbot(client: OpenAiClient, method: str) -> None:
     messages = _system_message()
-    method = ["ask", "bytez", "stream"]
-    _run_chat(client, method[0], messages)
+    _run_chat(client, method, messages)
 
 
 def _append_user_message(question: str, messages: list[ChatCompletionMessageParam]) -> None:
     user_param = ChatCompletionUserMessageParam(
         role="user",
-        content=f"{question.strip()}",
+        content=question.strip(),
     )
     messages.append(user_param)
 
@@ -138,12 +137,6 @@ def _call_bytez(client: OpenAiClient, messages: list[ChatCompletionMessageParam]
     if error := response.error:
         rprint("\n[b i red]No reply..")
         raise ApiError(error)
-
-    if not isinstance(out_dict := response.output, dict):
-        rprint("\n[b i red]No reply..")
-        details = f"Invalid output type: {type(out_dict)}"
-        logger.error(details)
-        raise AppSystemError(details)
 
     if not isinstance(out_dict := response.output, dict):
         rprint("\n[b i red]No reply..")

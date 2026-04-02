@@ -12,6 +12,7 @@ dependencies = [
   "mdformat>=1.0.0",
   "mdformat-gfm>=1.0.0",
   "openai>=1.102.0",
+  "pydantic[email]>=2.11.7",
   "rich>=14.1.0",
 ]
 

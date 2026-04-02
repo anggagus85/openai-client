@@ -3,7 +3,7 @@ from re import sub
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 # Define a list of common disposable/temporary email domains
-DISPOSABLE_DOMAINS: list[str] = [
+DISPOSABLE_DOMAINS: set[str] = {
     "mailinator.com",
     "temp-mail.org",
     "10minutemail.com",
@@ -11,7 +11,7 @@ DISPOSABLE_DOMAINS: list[str] = [
     "guerrillamail.com",
     "mailpoof.com",
     "trashmail.com",
-]
+}
 
 
 class EmailInquiry(BaseModel):
@@ -20,7 +20,7 @@ class EmailInquiry(BaseModel):
     name: str = Field(
         ...,
         min_length=1,
-        max_length=100,  # Using constant from settings
+        max_length=100,
         description="The user's name",
         examples=["John Doe"],
     )
@@ -87,7 +87,7 @@ class EmailInquiry(BaseModel):
             raise ValueError(msg)
         # Remove potentially harmful characters but preserve basic formatting
         sanitized = sub(r"[<>]", "", v.strip())
-        if len(sanitized) < 10:  # Using constant from settings
+        if len(sanitized) < 10:
             msg = "Message must be at least 10 characters long"
             raise ValueError(msg)
         return sanitized
@@ -122,7 +122,7 @@ class AnalysisFormat(BaseModel):
         description="Required action for the inquiry",
     )
     keywords: list[str] = Field(
-        default=["customer inquiry", "travel", "Bali"],
+        default_factory=list,
         description="Keywords in the inquiry",
     )
 

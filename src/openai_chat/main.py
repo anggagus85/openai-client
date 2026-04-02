@@ -91,7 +91,9 @@ def main() -> None:
     }
     client = OpenAiClient(**kwargs["inception"])
     # client.list_models()
-    # chatbot(client)
+
+    # method = ["ask", "bytez", "stream"]
+    # chatbot(client, method[0])
     itinerary(client)
 
 
