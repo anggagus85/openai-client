@@ -1,9 +1,11 @@
 # src/openai_chat/services/itinerary.py
 
+from collections.abc import Callable
 from logging import getLogger
 from pathlib import Path
 from typing import cast
 
+from bytez.client import Response
 from mdformat import text as mdformat_text
 from openai.types.chat import (
     ChatCompletion,
@@ -13,6 +15,7 @@ from openai.types.chat import (
 )
 
 from openai_chat.client import OpenAiClient
+from openai_chat.errors import ApiError, AppSystemError
 from openai_chat.schemas.ai import ItineraryRequestMD
 from openai_chat.utils import save_to_file
 
@@ -40,10 +43,10 @@ def _topics(duration: int) -> str:
     return f"""
     🌅 **DAILY BREAKDOWN** (Provide {duration} full days)
     For each day, include:
-    - **Morning Activity** (9-11 AM) with specific locations and times
-    - **Afternoon Activity** (12-4 PM) with lunch suggestions
-    - **Evening Activity** (5-8 PM) with dinner recommendations
-    - **Evening Wind-down** (relaxation/beverages options)
+    - - **Morning Activity :** (9-11 AM) with specific locations and times
+    - - **Afternoon Activity :** (12-4 PM) with lunch suggestions
+    - - **Evening Activity :** (5-8 PM) with dinner recommendations
+    - - **Evening Wind-down :** (relaxation/beverages options)
 
     🏨 **HANDPICKED ACCOMMODATIONS**
     - **1** 2-3 specific hotel/villa recommendations with price ranges
@@ -97,7 +100,7 @@ def _structure(duration: int, budget: str) -> str:
 
     return f"""
     # 🌴 Here's your {duration}-Days Bali trip Itinerary with {budget} budget 🌴
-    --title--
+    [Generated Title Here]
     ### 🌅 DAILY BREAKDOWN
     ## 🏨 HANDPICKED ACCOMMODATIONS
     ## 🍜 CULINARY EXPERIENCES
@@ -196,8 +199,8 @@ def _clean_markdown(text: str) -> str:
 def _itinerary_messages() -> list[ChatCompletionMessageParam]:
     itinerary_req = ItineraryRequestMD(
         duration=5,
-        interests=["culture", "food"],
-        budget="US$ 1500",
+        interests=["food", "adventure", "culture"],
+        budget="US$ 1900",
     )
     return [
         ChatCompletionSystemMessageParam(
@@ -211,13 +214,60 @@ def _itinerary_messages() -> list[ChatCompletionMessageParam]:
     ]
 
 
-def itinerary(client: OpenAiClient) -> None:
-    completion = client.open_ai(_itinerary_messages(), stream=False)
+def _methods(client: OpenAiClient) -> dict[str, Callable[[], str]]:
+    return {
+        "open_ai": lambda: _call_openai(client),
+        "bytez": lambda: _call_bytez(client),
+    }
+
+
+def itinerary(client: OpenAiClient, method: str) -> None:
+    logger.info("Generating itinerary...")
+
+    if not (content := _methods(client)[method]()):
+        details = "No content generated"
+        logger.error(details)
+        raise AppSystemError(details)
+
+    answer = content.strip()
+    if "</think>" in content:
+        # bytez api format tend to add <think> </think> tag
+        answer = content.split("</think>", 1)[1].strip()
+    content = _clean_markdown(answer)
+    cwd = Path.cwd()
+    save_to_file(content, cwd / "ITINERARY.md")
+
+
+def _call_openai(client: OpenAiClient) -> str:
+    completion = client.open_ai(_itinerary_messages())
     assistant_message = cast(ChatCompletion, completion).choices[0].message
 
     if not (content := assistant_message.content):
-        return
+        return ""
 
-    clean_md = _clean_markdown(content)
-    cwd = Path.cwd()
-    save_to_file(clean_md, cwd / "ITINERARY.md")
+    return content
+
+
+def _call_bytez(client: OpenAiClient) -> str:
+
+    response = client.bytez(_itinerary_messages())
+
+    if not isinstance(response, Response):
+        details = f"Invalid response type: {type(response)}"
+        logger.error(details)
+        raise AppSystemError(details)
+
+    if error := response.error:
+        raise ApiError(error)
+
+    if not isinstance(out_dict := response.output, dict):
+        details = f"Invalid output type: {type(out_dict)}"
+        logger.error(details)
+        raise AppSystemError(details)
+
+    if "content" not in out_dict:
+        details = "Response missing 'content' key"
+        logger.error(details)
+        raise AppSystemError(details)
+
+    return out_dict["content"]

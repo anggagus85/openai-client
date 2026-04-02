@@ -1,6 +1,5 @@
 from collections.abc import Generator
 from logging import getLogger
-from typing import Any
 
 from bytez import Bytez
 from bytez.client import Response
@@ -18,13 +17,9 @@ class OpenAiClient(OpenAI):
         super().__init__(api_key=api_key, base_url=base_url)
         self._model = model
         self._bytez_model = Bytez(get_api_key("BYTEZ_API_KEY")).model(model)
+        self.timeout = 60.0
         self._bytez_params = {"temperature": 0.3}
-        self._configs: dict[str, Any] = {
-            "temperature": 0.5,
-            "timeout": 60,
-            "reasoning_effort": None,
-            "model": self._model,
-        }
+        self._configs = {"temperature": 0.5, "model": self._model}
 
     def open_ai(
         self,

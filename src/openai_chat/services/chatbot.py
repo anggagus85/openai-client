@@ -1,4 +1,4 @@
-from collections.abc import Generator, Iterator
+from collections.abc import Callable, Generator, Iterator
 from contextlib import suppress
 from logging import getLogger
 from typing import cast
@@ -73,24 +73,30 @@ def _append_user_message(question: str, messages: list[ChatCompletionMessagePara
     messages.append(user_param)
 
 
+def _methods(
+    client: OpenAiClient,
+    messages: list[ChatCompletionMessageParam],
+) -> dict[str, Callable[..., None]]:
+    return {
+        "open_ai": lambda: _call_open_ai(client, messages),
+        "bytez": lambda: _call_bytez(client, messages),
+        "stream": lambda: _iter_chunk(_stream_chunk(client, messages)),
+    }
+
+
 def _run_chat(
     client: OpenAiClient,
     method: str,
     messages: list[ChatCompletionMessageParam],
 ) -> None:
-
+    logger.info("Running chatbot...")
     with suppress(KeyboardInterrupt):
         try:
             while True:
                 rprint("\n[b i blue]You:")
-                _append_user_message(question := input(), messages)
 
-                if method == "ask":
-                    _call_open_ai(client, messages)
-                elif method == "bytez":
-                    _call_bytez(client, messages)
-                elif method == "stream":
-                    _iter_chunk(_stream_chunk(client, messages))
+                _append_user_message(question := input(), messages)
+                _methods(client, messages)[method]()
 
                 if "bye" in question.lower():
                     break
@@ -119,7 +125,11 @@ def _call_open_ai(client: OpenAiClient, messages: list[ChatCompletionMessagePara
 
     if content := assistant_message.content:
         rprint("\n[b i green]AI:")
-        rprint(content, end="\n", flush=True)
+        answer = content.strip()
+        if "</think>" in content:
+            # bytez api format tend to add <think> </think> tag
+            answer = content.split("</think>", 1)[1].strip()
+        rprint(answer, end="\n", flush=True)
         return
 
     rprint("\n[b i red]No reply.")
@@ -157,7 +167,9 @@ def _call_bytez(client: OpenAiClient, messages: list[ChatCompletionMessageParam]
     messages.append(assistant_param)
 
     content = out_dict["content"]
-    answer = content.split("</think>", 1)[1].strip() if "</think>" in content else content.strip()
+    answer = content.strip()
+    if "</think>" in content:
+        answer = content.split("</think>", 1)[1].strip()
     rprint("\n[b i green]AI:")
     rprint(answer, end="\n", flush=True)
 
