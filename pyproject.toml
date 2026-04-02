@@ -1,3 +1,5 @@
+#:tombi schema.strict = false
+
 [project]
 name = "openai_client"
 version = "0.1.0"
@@ -11,8 +13,18 @@ dependencies = [
   "rich>=14.1.0",
 ]
 
+[project.scripts]
+openai-chat = "openai_chat.main:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build]
+packages = ["src/openai_chat"]
+
 [tool.pyrefly]
-project-includes = ["src/**/*.py"]
+project-includes = ["**/*.py"]
 project-excludes = [
   "build",
   "dist",
@@ -30,7 +42,7 @@ project-excludes = [
 [tool.ruff]
 line-length = 100
 target-version = "py313"
-include = ["src/**/*.py"]
+include = ["**/*.py"]
 exclude = [
   ".git",
   "__pycache__",

@@ -1,25 +1,11 @@
 from collections.abc import Generator
 from contextlib import suppress
 from logging import ERROR, basicConfig, getLogger
-from typing import Never, cast
+from typing import Never
 
 from bytez import Bytez
 from bytez.client import Response
-from dotenv import dotenv_values
-from openai import (
-    AuthenticationError,
-    BadRequestError,
-    ConflictError,
-    ContentFilterFinishReasonError,
-    InternalServerError,
-    InvalidWebhookSignatureError,
-    LengthFinishReasonError,
-    NotFoundError,
-    OpenAI,
-    PermissionDeniedError,
-    RateLimitError,
-    UnprocessableEntityError,
-)
+from openai import OpenAI
 from openai.types.chat import (
     ChatCompletionAssistantMessageParam,
     ChatCompletionMessageParam,
@@ -29,6 +15,15 @@ from openai.types.chat import (
 from rich import print as rprint
 from rich.logging import RichHandler
 from rich.traceback import install
+
+from openai_chat.errors import (
+    API_EXCEPTIONS,
+    SYSTEM_EXCEPTIONS,
+    ApiError,
+    AppSystemError,
+    UnknownError,
+)
+from openai_chat.utils import get_api_key
 
 basicConfig(
     level="NOTSET",
@@ -41,43 +36,6 @@ getLogger("openai").setLevel(ERROR)
 getLogger("httpcore").setLevel(ERROR)
 getLogger("urllib3").setLevel(ERROR)
 install()
-
-
-API_EXCEPTIONS = (
-    AuthenticationError,
-    BadRequestError,
-    PermissionDeniedError,
-    NotFoundError,
-    ConflictError,
-    UnprocessableEntityError,
-    RateLimitError,
-    InternalServerError,
-    LengthFinishReasonError,
-    ContentFilterFinishReasonError,
-    InvalidWebhookSignatureError,
-)
-
-SYSTEM_EXCEPTIONS = (
-    SystemExit,
-    EOFError,
-    OSError,
-    PermissionError,
-    ConnectionError,
-    TimeoutError,
-    FileNotFoundError,
-)
-
-
-class ApiError(Exception):
-    pass
-
-
-class UnknownError(Exception):
-    pass
-
-
-class AppSystemError(Exception):
-    pass
 
 
 OPENROUTER_FREE_MODELS = [
@@ -124,14 +82,6 @@ KIMI_MODELS = [
     "moonshot-v1-128k-vision-preview",
 ]
 
-_env = dotenv_values(verbose=True)
-
-
-def _api_key(key: str) -> str:
-    if api_key := _env.get(key):
-        return api_key
-    return ""
-
 
 class OpenAiClient(OpenAI):
     def __init__(self, api_key: str, base_url: str, model: str) -> None:
@@ -139,7 +89,8 @@ class OpenAiClient(OpenAI):
         self._messages: list[ChatCompletionMessageParam] = []
         self._system_message()
         self._model = model
-        self._bytez_model = Bytez(_api_key("BYTEZ_API_KEY")).model(model)
+        self._bytez_model = Bytez(get_api_key("BYTEZ_API_KEY")).model(model)
+        self._bytez_params = {"temperature": 0.3}
 
     def _system_message(self) -> None:
 
@@ -186,7 +137,6 @@ class OpenAiClient(OpenAI):
             model=self._model,
             temperature=0.5,
             timeout=60,
-            reasoning_effort=None,
         )
 
         # Through the API, we obtain the response message (role=assistant) from the large language model
@@ -201,14 +151,21 @@ class OpenAiClient(OpenAI):
             return content
 
     def _bytez_chat(self) -> str | None:
-        params = {"temperature": 0}
 
-        response = cast(Response, self._bytez_model.run(self._messages, params=params))
+        response = self._bytez_model.run(self._messages, params=self._bytez_params)
+
+        if not isinstance(response, Response):
+            details = f"Invalid response type: {type(response)}"
+            logger.error(details)
+            raise AppSystemError(details)
 
         if error := response.error:
             raise ApiError(error)
 
-        out_dict = cast(dict[str, str], response.output)
+        if not isinstance(out_dict := response.output, dict):
+            details = f"Invalid output type: {type(out_dict)}"
+            logger.error(details)
+            raise AppSystemError(details)
 
         assistant_param = ChatCompletionAssistantMessageParam(
             role="assistant",
@@ -232,9 +189,18 @@ class OpenAiClient(OpenAI):
             stream=True,
         )
 
+        accumulated = ""
         for chunk in completion:
             if (choices := chunk.choices) and (delta := choices[0].delta.content):
+                accumulated += delta
                 yield delta
+
+        # Append assembled assistant message to conversation history
+        assistant_param = ChatCompletionAssistantMessageParam(
+            role="assistant",
+            content=accumulated,
+        )
+        self._messages.append(assistant_param)
 
     def _append_user_message(self, question: str) -> None:
         user_param = ChatCompletionUserMessageParam(
@@ -306,6 +272,7 @@ class OpenAiClient(OpenAI):
         rprint(first_token, end="", flush=True)
         for token in iterator:
             rprint(token, end="", flush=True)
+        print()
 
     def list_models(self) -> None:
         exclude = "coder", "thinking"
@@ -322,29 +289,29 @@ def main() -> None:
 
     kwargs = {
         "inception": {
-            "api_key": _api_key("INCEPTION_API_KEY"),
+            "api_key": get_api_key("INCEPTION_API_KEY"),
             "base_url": "https://api.inceptionlabs.ai/v1",
             "model": "mercury-2",
         },
         "openrouter": {
-            "api_key": _api_key("OPENROUTER_API_KEY"),
+            "api_key": get_api_key("OPENROUTER_API_KEY"),
             "base_url": "https://openrouter.ai/api/v1",
             "model": "minimax/minimax-m2.5:free",
         },
         "moonshot": {
-            "api_key": _api_key("MOONSHOT_API_KEY"),
+            "api_key": get_api_key("MOONSHOT_API_KEY"),
             "base_url": "https://api.moonshot.ai/v1",
             "model": "kimi-k2-thinking",
         },
         "bytez": {
-            "api_key": _api_key("BYTEZ_API_KEY"),
+            "api_key": get_api_key("BYTEZ_API_KEY"),
             "base_url": "https://api.bytez.com/models/v2/openai/v1",
             "model": "Qwen/Qwen3-4B",
         },
     }
     client = OpenAiClient(**kwargs["inception"])
     # client.list_models()
-    client.run_chat("ask")
+    client.run_chat("stream")
 
 
 if __name__ == "__main__":
