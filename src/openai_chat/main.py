@@ -1,28 +1,10 @@
-from collections.abc import Generator
-from contextlib import suppress
 from logging import ERROR, basicConfig, getLogger
-from typing import Never
 
-from bytez import Bytez
-from bytez.client import Response
-from openai import OpenAI
-from openai.types.chat import (
-    ChatCompletionAssistantMessageParam,
-    ChatCompletionMessageParam,
-    ChatCompletionSystemMessageParam,
-    ChatCompletionUserMessageParam,
-)
-from rich import print as rprint
 from rich.logging import RichHandler
 from rich.traceback import install
 
-from openai_chat.errors import (
-    API_EXCEPTIONS,
-    SYSTEM_EXCEPTIONS,
-    ApiError,
-    AppSystemError,
-    UnknownError,
-)
+from openai_chat.client import OpenAiClient
+from openai_chat.services import chatbot, itinerary  # noqa: F401
 from openai_chat.utils import get_api_key
 
 basicConfig(
@@ -83,208 +65,6 @@ KIMI_MODELS = [
 ]
 
 
-class OpenAiClient(OpenAI):
-    def __init__(self, api_key: str, base_url: str, model: str) -> None:
-        super().__init__(api_key=api_key, base_url=base_url)
-        self._messages: list[ChatCompletionMessageParam] = []
-        self._system_message()
-        self._model = model
-        self._bytez_model = Bytez(get_api_key("BYTEZ_API_KEY")).model(model)
-        self._bytez_params = {"temperature": 0.3}
-
-    def _system_message(self) -> None:
-
-        self._messages.append(
-            ChatCompletionSystemMessageParam(
-                role="system",
-                content="""
-    <assignment>
-    Your name is "Made", you are the official BaliBlissed Concierge, a friendly and expert customer service assistant dedicated to crafting the perfect Balinese getaway. 🌴🥥✨
-    </assignment>
-
-    <personality_&_style>
-    - Introduction : Intruduce yourself as BaliBlissed Concierge.
-    - Vibe: Be exceptionally warm, welcoming, and enthusiastic. You are the digital face of Bali hospitality.
-    - Engagement: Use emojis liberally to make your content engaging, fun, and vibrant! 🏝️🍹
-    - Formatting: Use bold text and bullet points to ensure your recommendations are easy to scan for travelers on the move.
-    </personality_&_style>
-
-    <knowledge_&_scope>
-    - Bali Expert: You specialize in Balinese culture, luxury villas, hidden jungle waterfalls, and the best surf spots. 🗺️🌺
-    - Strictly Bali: You are an expert ONLY on Bali. If a user asks about other destinations (like Thailand or Europe), politely pivot the conversation back to the wonders of Bali.
-    - Company First: Always redirect to BaliBlissed website for any booking inquiries, itinerary, and detailed information.
-    </knowledge_&_scope>
-
-    <boundaries_&_safety>
-    - No over-reply: Focus only the user's topic question, No suggestions or informations if the user not ask.
-    - No Professional Advice: Never provide legal, medical, or financial advice.
-    - Accuracy: If you aren't sure about a specific opening time or price, suggest the user check the official BaliBlissed website or contact the venue directly.
-    - Prohibited: Reject any questions involving terrorism, racism, pornography, or violence.
-    </boundaries_&_safety>
-    """,
-            ),
-        )
-
-    def _ask(self) -> str | None:
-        """
-        Support multi-turn conversations.
-
-        Each time the chat function is called to converse with the large language model, it has access to the previous conversation history. In other words, the large language model has a memory.
-        """
-        # We engage in a conversation with the large language model, carrying the messages along
-        completion = self.chat.completions.create(
-            messages=self._messages,
-            model=self._model,
-            temperature=0.5,
-            timeout=60,
-        )
-
-        # Through the API, we obtain the response message (role=assistant) from the large language model
-        assistant_message = completion.choices[0].message
-        assistant_param = ChatCompletionAssistantMessageParam(**assistant_message.model_dump())
-
-        # To ensure the language model has a complete memory,
-        # add the message it returns to us to the messages list
-        self._messages.append(assistant_param)
-
-        if content := assistant_message.content:
-            return content
-
-    def _bytez_chat(self) -> str | None:
-
-        response = self._bytez_model.run(self._messages, params=self._bytez_params)
-
-        if not isinstance(response, Response):
-            details = f"Invalid response type: {type(response)}"
-            logger.error(details)
-            raise AppSystemError(details)
-
-        if error := response.error:
-            raise ApiError(error)
-
-        if not isinstance(out_dict := response.output, dict):
-            details = f"Invalid output type: {type(out_dict)}"
-            logger.error(details)
-            raise AppSystemError(details)
-
-        assistant_param = ChatCompletionAssistantMessageParam(
-            role="assistant",
-            content=out_dict["content"],
-        )
-        self._messages.append(assistant_param)
-
-        content = out_dict["content"]
-        if "</think>" in content:
-            return content.split("</think>", 1)[1].strip()
-        return content.strip()
-
-    def _stream_chat(self) -> Generator:
-
-        completion = self.chat.completions.create(
-            messages=self._messages,
-            model=self._model,
-            temperature=0.5,
-            timeout=60,
-            reasoning_effort=None,
-            stream=True,
-        )
-
-        accumulated = ""
-        for chunk in completion:
-            if (choices := chunk.choices) and (delta := choices[0].delta.content):
-                accumulated += delta
-                yield delta
-
-        # Append assembled assistant message to conversation history
-        assistant_param = ChatCompletionAssistantMessageParam(
-            role="assistant",
-            content=accumulated,
-        )
-        self._messages.append(assistant_param)
-
-    def _append_user_message(self, question: str) -> None:
-        user_param = ChatCompletionUserMessageParam(
-            role="user",
-            content=f"{question.strip()}",
-        )
-        self._messages.append(user_param)
-
-    @staticmethod
-    def _unknown_method(method: str) -> Never:
-        details = f"Invalid method: {method}"
-        logger.error(details)
-        raise ValueError(details)
-
-    def run_chat(self, method: str) -> None:
-
-        with suppress(KeyboardInterrupt):
-            try:
-                while True:
-                    rprint("\n[b i blue]You:")
-                    self._append_user_message(question := input())
-
-                    if method == "ask":
-                        self._call_ask()
-                    elif method == "bytez":
-                        self._call_bytez()
-                    elif method == "stream":
-                        self._call_stream()
-                    else:
-                        self._unknown_method(method)
-
-                    if "bye" in question.lower():
-                        break
-
-            except API_EXCEPTIONS as e:
-                logger.exception("API error")
-                raise ApiError(e) from e
-            except SYSTEM_EXCEPTIONS as e:
-                logger.exception("System error")
-                raise AppSystemError(e) from e
-            except Exception as e:
-                logger.exception("Unknown error")
-                raise UnknownError(e) from e
-
-    def _call_ask(self) -> None:
-        if not (reply := self._ask()):
-            rprint("\n[b i red]No reply.")
-            return
-        rprint("\n[b i green]AI:")
-        rprint(reply, end="\n", flush=True)
-
-    def _call_bytez(self) -> None:
-        if not (reply := self._bytez_chat()):
-            rprint("\n[b i red]No reply..")
-            return
-        rprint("\n[b i green]AI:")
-        rprint(reply, end="\n", flush=True)
-
-    def _call_stream(self) -> None:
-        reply = self._stream_chat()
-        iterator = iter(reply)
-        try:
-            first_token = next(iterator)
-        except StopIteration:
-            rprint("\n[b i red]No reply..")
-            return
-
-        rprint("\n[b i green]AI:")
-        rprint(first_token, end="", flush=True)
-        for token in iterator:
-            rprint(token, end="", flush=True)
-        print()
-
-    def list_models(self) -> None:
-        exclude = "coder", "thinking"
-        models = [
-            model.id
-            for model in self.models.list().data
-            if not any(word in model.id for word in exclude)
-            # if ":free" in model.id and not any(word in model.id for word in exclude)
-        ]
-        rprint(models)
-
-
 def main() -> None:
 
     kwargs = {
@@ -311,7 +91,8 @@ def main() -> None:
     }
     client = OpenAiClient(**kwargs["inception"])
     # client.list_models()
-    client.run_chat("stream")
+    # chatbot(client)
+    itinerary(client)
 
 
 if __name__ == "__main__":

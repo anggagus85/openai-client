@@ -9,6 +9,8 @@ requires-python = ">=3.13"
 dependencies = [
   "bytez>=3.0.1",
   "dotenv>=0.9.9",
+  "mdformat>=1.0.0",
+  "mdformat-gfm>=1.0.0",
   "openai>=1.102.0",
   "rich>=14.1.0",
 ]
