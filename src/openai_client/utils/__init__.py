@@ -1,4 +1,4 @@
-# src/openai_chat/utils/__init__.py
+# src/openai_client/utils/__init__.py
 
 from .helpers import get_api_key, save_to_file
 

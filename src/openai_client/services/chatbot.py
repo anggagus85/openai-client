@@ -1,0 +1,109 @@
+# src/openai_client/services/chatbot.py
+
+from contextlib import suppress
+from logging import getLogger
+
+from openai.types.chat import (
+    ChatCompletionMessageParam,
+    ChatCompletionSystemMessageParam,
+    ChatCompletionUserMessageParam,
+)
+from rich import print as rprint
+
+from openai_client.client import OpenAiClient
+from openai_client.errors import (
+    API_EXCEPTIONS,
+    SYSTEM_EXCEPTIONS,
+    ApiError,
+    AppSystemError,
+    UnknownError,
+)
+from openai_client.schemas.ai import OpenAIChatMessage
+from openai_client.services.caller import methods
+
+logger = getLogger(__name__)
+
+
+def _system_message() -> OpenAIChatMessage:
+    return OpenAIChatMessage(
+        role="system",
+        content="""
+    <assignment>
+    Your name is "Made", you are the official BaliBlissed Concierge, a friendly and expert customer service assistant dedicated to crafting the perfect Balinese getaway. 🌴🥥✨
+    </assignment>
+
+    <personality_&_style>
+    - Introduction : Introduce yourself as BaliBlissed Concierge.
+    - Vibe: Be exceptionally warm, welcoming, and enthusiastic. You are the digital face of Bali hospitality.
+    - Engagement: Use emojis liberally to make your content engaging, fun, and vibrant! 🏝️🍹
+    - Formatting: Use bold text and bullet points to ensure your recommendations are easy to scan for travelers on the move.
+    </personality_&_style>
+
+    <knowledge_&_scope>
+    - Bali Expert: You specialize in Balinese culture, luxury villas, hidden jungle waterfalls, and the best surf spots. 🗺️🌺
+    - Strictly Bali: You are an expert ONLY on Bali. If a user asks about other destinations (like Thailand or Europe), politely pivot the conversation back to the wonders of Bali.
+    - Company First: Always redirect to BaliBlissed website for any booking inquiries, itinerary, and detailed information.
+    </knowledge_&_scope>
+
+    <boundaries_&_safety>
+    - No over-reply: Focus only the user's topic question, No suggestions or informations if the user not ask.
+    - No Professional Advice: Never provide legal, medical, or financial advice.
+    - Accuracy: If you aren't sure about a specific opening time or price, suggest the user check the official BaliBlissed website or contact the venue directly.
+    - Prohibited: Reject any questions involving terrorism, racism, pornography, or violence.
+    </boundaries_&_safety>
+    """,
+    )
+
+
+def chatbot(client: OpenAiClient, method: str) -> None:
+    messages: list[ChatCompletionMessageParam] = [
+        ChatCompletionSystemMessageParam(**_system_message().model_dump()),
+    ]
+    _run_chat(client, method, messages)
+
+
+def _append_user_message(question: str, messages: list[ChatCompletionMessageParam]) -> None:
+    user_param = OpenAIChatMessage(
+        role="user",
+        content=question.strip(),
+    )
+    messages.append(ChatCompletionUserMessageParam(**user_param.model_dump()))
+
+
+def _run_chat(
+    client: OpenAiClient,
+    method: str,
+    messages: list[ChatCompletionMessageParam],
+) -> None:
+    logger.info("Running chatbot...")
+    with suppress(KeyboardInterrupt):
+        try:
+            while True:
+                rprint("\n[b i blue]You:")
+
+                _append_user_message(question := input(), messages)
+                rprint("\n[b i green]AI:")
+
+                answer = methods(client, messages)[method]()
+
+                if method == "stream":
+                    # Stream already printed output via _iter_chunk
+                    pass
+                elif not answer:
+                    rprint("\n[b i red]No reply.")
+                    continue
+                else:
+                    rprint(answer, end="\n", flush=True)
+
+                if "bye" in question.lower():
+                    break
+
+        except API_EXCEPTIONS as e:
+            logger.exception("API error")
+            raise ApiError(e) from e
+        except SYSTEM_EXCEPTIONS as e:
+            logger.exception("System error")
+            raise AppSystemError(e) from e
+        except Exception as e:
+            logger.exception("Unknown error")
+            raise UnknownError(e) from e

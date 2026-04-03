@@ -112,6 +112,15 @@ wheels = [
 ]
 
 [[package]]
+name = "disposable-email-domains"
+version = "0.0.169"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/38/63/ebe9802d62ddf9a3ac982705d8dcfbc374c311a9b87ea94d612492aa7928/disposable_email_domains-0.0.169.tar.gz", hash = "sha256:e051ef00c6449ba7fd5d52c9a494ff12b0578c14218e57a4a5d0b9268ca1a7d3", size = 64418, upload-time = "2026-03-13T02:51:48.757Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/53/30/f4a010edec9492b2584dd41245438fb4fbda32441beb76be57460e73c3b3/disposable_email_domains-0.0.169-py2.py3-none-any.whl", hash = "sha256:a6f4dc54a6939ab685025e05a628eba68ef003245dfd82bbd2b788e8e25caa18", size = 32904, upload-time = "2026-03-13T02:51:47.296Z" },
+]
+
+[[package]]
 name = "distro"
 version = "1.9.0"
 source = { registry = "https://pypi.org/simple" }
@@ -320,6 +329,7 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "bytez" },
+    { name = "disposable-email-domains" },
     { name = "dotenv" },
     { name = "mdformat" },
     { name = "mdformat-gfm" },
@@ -331,6 +341,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "bytez", specifier = ">=3.0.1" },
+    { name = "disposable-email-domains", specifier = ">=0.0.169" },
     { name = "dotenv", specifier = ">=0.9.9" },
     { name = "mdformat", specifier = ">=1.0.0" },
     { name = "mdformat-gfm", specifier = ">=1.0.0" },

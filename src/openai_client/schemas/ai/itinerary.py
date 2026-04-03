@@ -1,4 +1,4 @@
-# app/schemas/ai/itinerary.py
+# src/openai_client/schemas/ai/itinerary.py
 
 """
 Schemas for AI-powered itinerary generation requests and responses.

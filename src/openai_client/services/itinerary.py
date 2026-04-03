@@ -1,23 +1,19 @@
-# src/openai_chat/services/itinerary.py
+# src/openai_client/services/itinerary.py
 
-from collections.abc import Callable
 from logging import getLogger
 from pathlib import Path
-from typing import cast
 
-from bytez.client import Response
 from mdformat import text as mdformat_text
 from openai.types.chat import (
-    ChatCompletion,
     ChatCompletionMessageParam,
     ChatCompletionSystemMessageParam,
     ChatCompletionUserMessageParam,
 )
 
-from openai_chat.client import OpenAiClient
-from openai_chat.errors import ApiError, AppSystemError
-from openai_chat.schemas.ai import ItineraryRequestMD
-from openai_chat.utils import save_to_file
+from openai_client.client import OpenAiClient
+from openai_client.schemas.ai import ItineraryRequestMD
+from openai_client.services.caller import methods
+from openai_client.utils import save_to_file
 
 logger = getLogger(__name__)
 
@@ -196,12 +192,7 @@ def _clean_markdown(text: str) -> str:
         return text
 
 
-def _itinerary_messages() -> list[ChatCompletionMessageParam]:
-    itinerary_req = ItineraryRequestMD(
-        duration=5,
-        interests=["food", "adventure", "culture"],
-        budget="US$ 1900",
-    )
+def _itinerary_messages(itinerary_req: ItineraryRequestMD) -> list[ChatCompletionMessageParam]:
     return [
         ChatCompletionSystemMessageParam(
             role="system",
@@ -214,60 +205,13 @@ def _itinerary_messages() -> list[ChatCompletionMessageParam]:
     ]
 
 
-def _methods(client: OpenAiClient) -> dict[str, Callable[[], str]]:
-    return {
-        "open_ai": lambda: _call_openai(client),
-        "bytez": lambda: _call_bytez(client),
-    }
-
-
-def itinerary(client: OpenAiClient, method: str) -> None:
+def itinerary(itinerary_req: ItineraryRequestMD, client: OpenAiClient, method: str) -> None:
     logger.info("Generating itinerary...")
+    messages = _itinerary_messages(itinerary_req)
 
-    if not (content := _methods(client)[method]()):
-        details = "No content generated"
-        logger.error(details)
-        raise AppSystemError(details)
+    if not (content := methods(client, messages, append=False)[method]()):
+        logger.warning("No itinerary content returned from OpenAI method %s", method)
+        return
 
-    answer = content.strip()
-    if "</think>" in content:
-        # bytez api format tend to add <think> </think> tag
-        answer = content.split("</think>", 1)[1].strip()
-    content = _clean_markdown(answer)
-    cwd = Path.cwd()
-    save_to_file(content, cwd / "ITINERARY.md")
-
-
-def _call_openai(client: OpenAiClient) -> str:
-    completion = client.open_ai(_itinerary_messages())
-    assistant_message = cast(ChatCompletion, completion).choices[0].message
-
-    if not (content := assistant_message.content):
-        return ""
-
-    return content
-
-
-def _call_bytez(client: OpenAiClient) -> str:
-
-    response = client.bytez(_itinerary_messages())
-
-    if not isinstance(response, Response):
-        details = f"Invalid response type: {type(response)}"
-        logger.error(details)
-        raise AppSystemError(details)
-
-    if error := response.error:
-        raise ApiError(error)
-
-    if not isinstance(out_dict := response.output, dict):
-        details = f"Invalid output type: {type(out_dict)}"
-        logger.error(details)
-        raise AppSystemError(details)
-
-    if "content" not in out_dict:
-        details = "Response missing 'content' key"
-        logger.error(details)
-        raise AppSystemError(details)
-
-    return out_dict["content"]
+    content = _clean_markdown(content)
+    save_to_file(content, Path.cwd() / "ITINERARY.md")

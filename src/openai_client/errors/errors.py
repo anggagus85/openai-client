@@ -1,4 +1,4 @@
-# src/openai_chat/errors/errors.py
+# src/openai_client/errors/errors.py
 
 from openai import (
     AuthenticationError,

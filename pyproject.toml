@@ -8,6 +8,7 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
   "bytez>=3.0.1",
+  "disposable-email-domains>=0.0.169",
   "dotenv>=0.9.9",
   "mdformat>=1.0.0",
   "mdformat-gfm>=1.0.0",
@@ -17,14 +18,14 @@ dependencies = [
 ]
 
 [project.scripts]
-openai-chat = "openai_chat.main:main"
+openai-client = "openai_client.main:main"
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build]
-packages = ["src/openai_chat"]
+packages = ["src/openai_client"]
 
 [tool.pyrefly]
 project-includes = ["**/*.py"]

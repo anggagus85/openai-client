@@ -1,4 +1,4 @@
-# src/openai_chat/errors/__init__.py
+# src/openai_client/errors/__init__.py
 
 from .errors import API_EXCEPTIONS, SYSTEM_EXCEPTIONS, ApiError, AppSystemError, UnknownError
 

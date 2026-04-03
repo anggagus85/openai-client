@@ -1,17 +1,11 @@
+# src/openai_client/schemas/ai/email.py
+
 from re import sub
 
+import disposable_email_domains
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
-# Define a list of common disposable/temporary email domains
-DISPOSABLE_DOMAINS: set[str] = {
-    "mailinator.com",
-    "temp-mail.org",
-    "10minutemail.com",
-    "yopmail.com",
-    "guerrillamail.com",
-    "mailpoof.com",
-    "trashmail.com",
-}
+DISPOSABLE_DOMAINS = disposable_email_domains.blocklist
 
 
 class EmailInquiry(BaseModel):

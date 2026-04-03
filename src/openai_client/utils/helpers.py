@@ -1,4 +1,4 @@
-# src/openai_chat/utils/helpers.py
+# src/openai_client/utils/helpers.py
 
 from logging import getLogger
 from pathlib import Path
@@ -25,7 +25,7 @@ def save_to_file(data: str, file_path: Path) -> None:
     """
 
     try:
-        with file_path.open("w") as f:
+        with file_path.open("w", encoding="utf-8") as f:
             f.write(data)
         logger.info(f"Data saved to file: {file_path}")
     except Exception:
