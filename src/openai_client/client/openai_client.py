@@ -10,12 +10,11 @@ from openai.types.chat.chat_completion_chunk import ChatCompletionChunk
 logger = getLogger(__name__)
 
 
-class OpenAiClient(OpenAI):
-    def __init__(self, api_key: str, base_url: str, model: str) -> None:
-        super().__init__(api_key=api_key, base_url=base_url)
+class OpenAiClient(OpenAI, Bytez):
+    def __init__(self, api_key: str, base_url: str, model: str, timeout: float = 60.0) -> None:
+        super().__init__(api_key=api_key, base_url=base_url, timeout=timeout)
         self._model = model
-        self._bytez_model = Bytez(api_key).model(model)
-        self.timeout = 60.0
+        self._bytez_model = self.model(model)
         self._bytez_params = {"temperature": 0.3}
         self._configs = {"temperature": 0.5, "model": self._model}
 
