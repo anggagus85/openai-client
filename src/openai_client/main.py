@@ -70,7 +70,7 @@ def main() -> None:
             "model": "Qwen/Qwen3-8B",
         },
     }
-    client = OpenAiClient(**kwargs["inception"])
+    client = OpenAiClient(**kwargs["openrouter"])
 
     # client.list_models()
 
@@ -79,12 +79,12 @@ def main() -> None:
     # - method = "bytez" ->  only kwargs["bytez"] is valid
     method = ["open_ai", "bytez", "stream"]
 
-    # _do_chat(client, method[0])
+    _do_chat(client, method[2])
 
     # Itinerary generation prefer to use bytez
     # _generate_itinerary(client, method[1])
 
-    _email_inquiry(client, method[0])
+    # _email_inquiry(client, method[0])
 
 
 if __name__ == "__main__":

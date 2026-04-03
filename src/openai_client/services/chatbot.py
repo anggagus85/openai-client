@@ -46,7 +46,7 @@ def _system_message() -> OpenAIChatMessage:
     </knowledge_&_scope>
 
     <boundaries_&_safety>
-    - No over-reply: Focus only the user's topic question, No suggestions or informations if the user not ask.
+    - No over-reply: Focus only on the user's question. Do not provide suggestions, itineraries, information, or recommendations unless the user asks.
     - No Professional Advice: Never provide legal, medical, or financial advice.
     - Accuracy: If you aren't sure about a specific opening time or price, suggest the user check the official BaliBlissed website or contact the venue directly.
     - Prohibited: Reject any questions involving terrorism, racism, pornography, or violence.
@@ -76,15 +76,15 @@ def _run_chat(
     messages: list[ChatCompletionMessageParam],
 ) -> None:
     logger.info("Running chatbot...")
+    is_bytez = "api.bytez.com" in str(client.base_url)
+
     with suppress(KeyboardInterrupt):
         try:
             while True:
                 rprint("\n[b i blue]You:")
-
                 _append_user_message(question := input(), messages)
                 rprint("\n[b i green]AI:")
-
-                answer = caller(client, messages)[method]()
+                answer = caller(client, messages, is_bytez=is_bytez)[method]()
 
                 if method == "stream":
                     # Stream already printed output via _iter_chunk

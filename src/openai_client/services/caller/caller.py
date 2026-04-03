@@ -1,5 +1,5 @@
 from collections.abc import Callable, Generator, Iterator
-from logging import getLogger
+from logging import ERROR, getLogger
 from typing import cast
 
 from bytez.client import Response
@@ -17,6 +17,8 @@ from openai_client.errors import ApiError, AppSystemError
 from openai_client.schemas.ai import OpenAIChatMessage
 
 logger = getLogger(__name__)
+
+getLogger("httpx").setLevel(ERROR)
 
 
 def _cleanup_answer(content: str) -> str:
@@ -43,11 +45,12 @@ def caller(
     messages: list[ChatCompletionMessageParam],
     *,
     append: bool = True,
+    is_bytez: bool = False,
 ) -> dict[str, Callable[..., str | None]]:
     return {
         "open_ai": lambda: _call_open_ai(client, messages, append=append),
         "bytez": lambda: _call_bytez(client, messages, append=append),
-        "stream": lambda: _iter_chunk(_stream_chunk(client, messages)),
+        "stream": lambda: _iter_chunk(_stream_chunk(client, messages), is_bytez=is_bytez),
     }
 
 
@@ -109,30 +112,72 @@ def _call_bytez(
     return answer
 
 
-def _iter_chunk(chunks: Iterator[str]) -> None:
-    try:
-        first_token = next(chunks)
-    except StopIteration:
-        rprint("\n[b i red]No reply..")
-        return
+def _iter_chunk(chunks: Iterator[str | None], *, is_bytez: bool = False) -> None:
+    """
+    Iterate over streamed tokens and print them to the console.
 
-    rprint(first_token, end="", flush=True)
+    Filters out any content before the closing ``</think>`` tag, which is commonly
+    included in Bytez API responses as part of their internal ``<think> ... </think>``
+    reasoning block. Only the actual answer (content after ``</think>``) is printed.
+
+    Args:
+        chunks: An iterator yielding streamed token strings from the API.
+        is_bytez: Whether the API is Bytez.
+    """
+    buffer = ""
+    started = False
+    skipping_leading = False
+
     for token in chunks:
-        rprint(token, end="", flush=True)
+        if token is None:
+            return
+
+        current_token: str = token
+
+        if not is_bytez:
+            rprint(current_token, end="", flush=True)
+            continue
+
+        if not started:
+            # Accumulate tokens until the closing ``</think>`` tag is found
+            buffer += token
+            if "</think>" not in buffer:
+                continue
+            # Extract content after the last ``</think>`` occurrence
+            buffer = buffer.split("</think>")[-1]
+            started = True
+            skipping_leading = True
+            current_token = buffer  # Use remaining buffer content as current token
+
+        if skipping_leading:
+            # Skip leading whitespace/newlines immediately after ``</think>``
+            if not (current_token := current_token.lstrip()):
+                continue  # Still whitespace, skip to next token
+            skipping_leading = False
+
+        rprint(current_token, end="", flush=True)
+
     print()
 
 
 def _stream_chunk(client: OpenAiClient, messages: list[ChatCompletionMessageParam]) -> Generator:
-    completion = cast(Stream[ChatCompletionChunk], client.open_ai(messages, stream=True))
+    stream = cast(Stream[ChatCompletionChunk], client.open_ai(messages, stream=True))
 
     accumulated = ""
-    for chunk in completion:
-        if (choices := chunk.choices) and (delta := choices[0].delta.content):
-            accumulated += delta
-            yield delta
+    for chunk in stream:
+        if not chunk.choices:
+            continue
+        if chunk.choices[0].finish_reason:
+            break
+
+        if (choices := chunk.choices) and (content := choices[0].delta.content):
+            accumulated += content
+            yield content
 
     if accumulated:  # Only append if we received content
         _append_assistant_message(messages, accumulated)  # for chatbot memory context
+    else:
+        yield None
 
 
 def _append_assistant_message(messages: list[ChatCompletionMessageParam], content: str) -> None:
