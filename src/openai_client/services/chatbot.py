@@ -19,7 +19,7 @@ from openai_client.errors import (
     UnknownError,
 )
 from openai_client.schemas.ai import OpenAIChatMessage
-from openai_client.services.caller import methods
+from openai_client.services.caller import caller
 
 logger = getLogger(__name__)
 
@@ -84,7 +84,7 @@ def _run_chat(
                 _append_user_message(question := input(), messages)
                 rprint("\n[b i green]AI:")
 
-                answer = methods(client, messages)[method]()
+                answer = caller(client, messages)[method]()
 
                 if method == "stream":
                     # Stream already printed output via _iter_chunk

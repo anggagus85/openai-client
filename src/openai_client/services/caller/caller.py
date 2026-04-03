@@ -38,7 +38,7 @@ def _cleanup_answer(content: str) -> str:
     return answer
 
 
-def methods(
+def caller(
     client: OpenAiClient,
     messages: list[ChatCompletionMessageParam],
     *,

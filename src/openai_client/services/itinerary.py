@@ -12,7 +12,7 @@ from openai.types.chat import (
 
 from openai_client.client import OpenAiClient
 from openai_client.schemas.ai import ItineraryRequestMD
-from openai_client.services.caller import methods
+from openai_client.services.caller import caller
 from openai_client.utils import save_to_file
 
 logger = getLogger(__name__)
@@ -209,7 +209,7 @@ def itinerary(itinerary_req: ItineraryRequestMD, client: OpenAiClient, method: s
     logger.info("Generating itinerary...")
     messages = _itinerary_messages(itinerary_req)
 
-    if not (content := methods(client, messages, append=False)[method]()):
+    if not (content := caller(client, messages, append=False)[method]()):
         logger.warning("No itinerary content returned from OpenAI method %s", method)
         return
 

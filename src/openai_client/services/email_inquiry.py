@@ -14,7 +14,7 @@ from pydantic import ValidationError
 
 from openai_client.client import OpenAiClient
 from openai_client.schemas.ai import AnalysisFormat, ContactAnalysisResponse, EmailInquiry
-from openai_client.services.caller import methods
+from openai_client.services.caller import caller
 
 logger = getLogger(__name__)
 
@@ -97,7 +97,7 @@ def analyze_contact(email_inquiry: EmailInquiry, ai_client: OpenAiClient, method
     )
 
     logger.info("Analyzing email inquiry...")
-    response = methods(ai_client, messages, append=False)[method]()
+    response = caller(ai_client, messages, append=False)[method]()
     try:
         response_dict = loads(response) if isinstance(response, str) else response
         analysis = AnalysisFormat.model_validate(response_dict)
@@ -358,7 +358,7 @@ def confirmation_message(
     messages = _email_messages(_confirmation_message_prompt(request, sent=sent))
 
     logger.info("Generating confirmation message...")
-    response = methods(ai_client, messages, append=False)[method]()
+    response = caller(ai_client, messages, append=False)[method]()
     data = {"confirmation": response}
     try:
         return ContactAnalysisResponse.model_validate(data)
