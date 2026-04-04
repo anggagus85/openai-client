@@ -7,7 +7,12 @@ from rich.traceback import install
 
 from openai_client.client import OpenAiClient
 from openai_client.schemas.ai import EmailInquiry, ItineraryRequestMD
-from openai_client.services import analyze_contact, chatbot, confirmation_message, itinerary
+from openai_client.services import (
+    analyze_contact,
+    chatbot,
+    confirmation_message,
+    itinerary,
+)
 from openai_client.utils import get_api_key, save_to_file
 
 basicConfig(
@@ -31,9 +36,9 @@ def _do_chat(client: OpenAiClient, method: str) -> None:
 
 def _generate_itinerary(client: OpenAiClient, method: str) -> None:
     itinerary_req = ItineraryRequestMD(
-        duration=7,
-        interests=["culture", "beaches", "activities"],
-        budget="US$ 2000",
+        duration=6,
+        interests=["wellness", "temples", "activities"],
+        budget="US$ 1500",
     )
     itinerary(itinerary_req, client, method)
 
@@ -77,7 +82,7 @@ def main() -> None:
             # "model": "moonshotai/kimi-k2-thinking",
         },
     }
-    client = OpenAiClient(**kwargs["openrouter"])
+    client = OpenAiClient(**kwargs["inception"])
 
     # client.list_models("bytez")
 

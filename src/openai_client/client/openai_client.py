@@ -62,3 +62,6 @@ class OpenAiClient(OpenAI):
         models = loads(Path("models.json").read_text())
         models[provider] = free
         save_to_file(dumps(models, indent=4), Path("models.json"))
+
+    def __str__(self) -> str:
+        return f"model '{self.model}' via {self.base_url}"

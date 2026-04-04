@@ -9,6 +9,7 @@ from openai.types.chat import ChatCompletionSystemMessageParam, ChatCompletionUs
 from openai_client.client import OpenAiClient
 from openai_client.schemas.ai import ItineraryRequestMD
 from openai_client.services.caller import caller
+from openai_client.services.search import search_clients
 from openai_client.types import ListParams
 from openai_client.utils import save_to_file
 
@@ -48,7 +49,7 @@ def _topics(duration: int) -> str:
     - **Evening Wind-down:**
         - [Relaxation activity such as spa treatment with duration and price (e.g., "60 min, USD 45"), or a beverage option with price (e.g., "**Herbal Lemongrass Tea** – USD 2").]
 
-    ### **Day 2 – [Creative Day Title]**
+    #### **Day 2 – [Creative Day Title]**
 
     [Follow the same detailed format as Day 1]
 
@@ -265,13 +266,132 @@ def _itinerary_messages(itinerary_req: ItineraryRequestMD) -> ListParams:
     ]
 
 
-def itinerary(itinerary_req: ItineraryRequestMD, client: OpenAiClient, method: str) -> None:
-    logger.info("Generating itinerary with model '%s' via '%s'", client.model, client.base_url)
+def _plain_itinerary(itinerary_req: ItineraryRequestMD, client: OpenAiClient, method: str) -> None:
+    logger.info("Generating itinerary with %s", client)
     messages = _itinerary_messages(itinerary_req)
 
     if not (content := caller(client, messages, append=False)[method]()):
         logger.warning("No itinerary content returned from OpenAI method %s", method)
         return
 
+    _clean_and_save(content)
+
+
+def _itinerary_with_search_messages(
+    itinerary_req: ItineraryRequestMD,
+    search_results: str,
+) -> ListParams:
+    interests = ", ".join(itinerary_req.interests)
+    search_context = f"""
+    <latest_web_search_results>
+    The following is current information about Bali retrieved from web search:
+
+    {search_results}
+
+    Use this information to ensure your itinerary recommendations are up-to-date and relevant.
+    </latest_web_search_results>
+    """
+
+    prompt = f"""
+    Create a comprehensive and engaging {itinerary_req.duration} day(s) travel itinerary for Bali.
+
+    <traveler_profile>
+    🎯 Interests: {interests}
+    📅 Duration: {itinerary_req.duration} day(s)
+    💰 Budget: {itinerary_req.budget}
+    </traveler_profile>
+
+    {search_context}
+
+    <title_instruction>
+    Create a catchy, engaging title based on the traveler profile above.
+    The title should:
+    - Capture the essence of the trip in one memorable phrase
+    - Include 2 relevant emojis opening and closing for best representation of related interests
+    - Be concise (max 20 words)
+    Example formats:
+    - ## **🌊 Beach Bliss & Temple Trails: Your 5-Day Bali Escape 🛕**
+    - ## **🍛 Food, Soul & Serenity: A Week in Paradise 🧘🏼**
+    Place this title as a bold subtitle immediately after the main header.
+    </title_instruction>
+
+    <content_topics>
+    {_topics(itinerary_req.duration)}
+    </content_topics>
+
+    <structure>
+    Follow this exact markdown structure for your output:
+    {_structure(itinerary_req.duration, itinerary_req.budget)}
+    </structure>
+
+    <formatting_rules>
+    - Follow proper markdown structure and headers usage strictly
+    - Use emojis liberally to make content engaging and easy to scan
+    - Insert your creative title immediately after the main "# 🌴 Here's your..." header
+    - Make sure the day numbering is correct for the DAILY BREAKDOWN section
+    - For DAILY BREAKDOWN section, use #### (h4) for each day header (e.g., "#### **Day 1: ...**", "#### **Day 2: ...**")
+    - Make sure no trailing spaces before any new line
+    - Put a single newline character at the end of the document
+    - Use bold text for important information (restaurant names, locations, prices)
+    - Ensure each day has substantial content (at least 300-400 words each)
+    - Total itinerary should be comprehensive enough for the traveler to execute
+    - Incorporate current information from the search results where relevant
+    </formatting_rules>
+
+    Create a memorable, practical, and culturally rich Bali itinerary that exceeds expectations!
+    """
+
+    return [
+        ChatCompletionSystemMessageParam(
+            role="system",
+            content="You are an expert travel planner specializing in authentic Bali experiences. Use the latest search results to provide current, accurate information.",
+        ),
+        ChatCompletionUserMessageParam(
+            role="user",
+            content=prompt,
+        ),
+    ]
+
+
+def _search_bali_info(itinerary_req: ItineraryRequestMD) -> str:
+    interests = ", ".join(itinerary_req.interests)
+    return (
+        f"Bali 2026 travel guide: best hotels villas in Ubud Seminyak Canggu Uluwatu, "
+        f"top warungs restaurants local cuisine, "
+        f"hidden gems secret waterfalls lesser-known temples authentic experiences, "
+        f"cooking classes traditional markets wellness retreats, "
+        f"{interests} {itinerary_req.duration} day itinerary recommendations"
+    )
+
+
+def itinerary(
+    itinerary_req: ItineraryRequestMD,
+    client: OpenAiClient,
+    method: str,
+) -> None:
+    for provider in search_clients():
+        logger.info("Searching for latest Bali information with %s", provider)
+
+        success, search_results = provider.search(_search_bali_info(itinerary_req))
+
+        if not success:
+            continue
+
+        logger.info("Search completed successfully, generating itinerary with latest information")
+        logger.info("Generating itinerary with %s", client)
+        messages = _itinerary_with_search_messages(itinerary_req, search_results)
+
+        if not (content := caller(client, messages, append=False)[method]()):
+            logger.warning("No itinerary content returned from OpenAI method %s", method)
+            return
+
+        _clean_and_save(content)
+        break
+    else:
+        logger.warning("Search returned no results or error, proceeding without search data")
+        _plain_itinerary(itinerary_req, client, method)
+
+
+def _clean_and_save(content: str) -> None:
     content = _clean_markdown(content)
     save_to_file(content, Path.cwd() / "itinerary.md")

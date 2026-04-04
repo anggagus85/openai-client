@@ -69,9 +69,8 @@ def _append_user_message(question: str, messages: ListParams) -> None:
 
 
 def _run_chat(client: OpenAiClient, method: str, messages: ListParams) -> None:
-    logger.info("Running chatbot with model '%s' via '%s'", client.model, client.base_url)
+    logger.info("Running chatbot with %s", client)
     is_bytez = "api.bytez.com" in str(client.base_url)
-    # is_bytez = any(x in str(client.base_url) for x in ["api.bytez.com", "api.nvidia.com"])
 
     with suppress(KeyboardInterrupt):
         try:

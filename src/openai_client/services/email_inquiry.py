@@ -93,11 +93,7 @@ def analyze_contact(email_inquiry: EmailInquiry, client: OpenAiClient, method: s
         _contact_analysis_prompt(email_inquiry.name, email_inquiry.message),
     )
 
-    logger.info(
-        "Analyzing email inquiry with model '%s' via '%s'",
-        client.model,
-        client.base_url,
-    )
+    logger.info("Analyzing email inquiry with %s", client)
     response = caller(client, messages, append=False)[method]()
     try:
         response_dict = loads(response) if isinstance(response, str) else response
