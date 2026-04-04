@@ -8,13 +8,13 @@ from openai.types.chat import (
     ChatCompletion,
     ChatCompletionAssistantMessageParam,
     ChatCompletionChunk,
-    ChatCompletionMessageParam,
 )
 from rich import print as rprint
 
 from openai_client.client import OpenAiClient
 from openai_client.errors import ApiError, AppSystemError
 from openai_client.schemas.ai import OpenAIChatMessage
+from openai_client.types import ListParams
 
 logger = getLogger(__name__)
 
@@ -42,7 +42,7 @@ def _cleanup_answer(content: str) -> str:
 
 def caller(
     client: OpenAiClient,
-    messages: list[ChatCompletionMessageParam],
+    messages: ListParams,
     *,
     append: bool = True,
     is_bytez: bool = False,
@@ -54,12 +54,7 @@ def caller(
     }
 
 
-def _call_open_ai(
-    client: OpenAiClient,
-    messages: list[ChatCompletionMessageParam],
-    *,
-    append: bool = True,
-) -> str:
+def _call_open_ai(client: OpenAiClient, messages: ListParams, *, append: bool = True) -> str:
     completion = client.open_ai(messages)
 
     # Through the API, we obtain the response message (role=assistant) from the large language model
@@ -76,12 +71,7 @@ def _call_open_ai(
     return ""
 
 
-def _call_bytez(
-    client: OpenAiClient,
-    messages: list[ChatCompletionMessageParam],
-    *,
-    append: bool = True,
-) -> str:
+def _call_bytez(client: OpenAiClient, messages: ListParams, *, append: bool = True) -> str:
     response = client.bytez(messages)
 
     if not isinstance(response, Response):
@@ -160,7 +150,7 @@ def _iter_chunk(chunks: Iterator[str | None], *, is_bytez: bool = False) -> None
     print()
 
 
-def _stream_chunk(client: OpenAiClient, messages: list[ChatCompletionMessageParam]) -> Generator:
+def _stream_chunk(client: OpenAiClient, messages: ListParams) -> Generator:
     stream = cast(Stream[ChatCompletionChunk], client.open_ai(messages, stream=True))
 
     accumulated = ""
@@ -180,7 +170,7 @@ def _stream_chunk(client: OpenAiClient, messages: list[ChatCompletionMessagePara
         yield None
 
 
-def _append_assistant_message(messages: list[ChatCompletionMessageParam], content: str) -> None:
+def _append_assistant_message(messages: ListParams, content: str) -> None:
     """
     Append assistant message to conversation history for maintain the context/conversation history.
 

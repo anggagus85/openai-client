@@ -3,11 +3,7 @@
 from contextlib import suppress
 from logging import getLogger
 
-from openai.types.chat import (
-    ChatCompletionMessageParam,
-    ChatCompletionSystemMessageParam,
-    ChatCompletionUserMessageParam,
-)
+from openai.types.chat import ChatCompletionSystemMessageParam, ChatCompletionUserMessageParam
 from rich import print as rprint
 
 from openai_client.client import OpenAiClient
@@ -20,6 +16,7 @@ from openai_client.errors import (
 )
 from openai_client.schemas.ai import OpenAIChatMessage
 from openai_client.services.caller import caller
+from openai_client.types import ListParams
 
 logger = getLogger(__name__)
 
@@ -46,8 +43,9 @@ def _system_message() -> OpenAIChatMessage:
     </knowledge_&_scope>
 
     <boundaries_&_safety>
-    - No over-reply: Focus only on the user's question. Do not provide suggestions, itineraries, information, or recommendations unless the user asks.
+    - No over-reply: Focus only on the user's question. Do not provide suggestions, itineraries, information, prices, or recommendations unless the user asks.
     - No Professional Advice: Never provide legal, medical, or financial advice.
+    - Just a glimpse: If the user asks for more information, suggestions, itineraries, prices, or recommendations, give a glimpse and be concise. If user ask for more details, redirect them to the official BaliBlissed website for more information.
     - Accuracy: If you aren't sure about a specific opening time or price, suggest the user check the official BaliBlissed website or contact the venue directly.
     - Prohibited: Reject any questions involving terrorism, racism, pornography, or violence.
     </boundaries_&_safety>
@@ -56,13 +54,13 @@ def _system_message() -> OpenAIChatMessage:
 
 
 def chatbot(client: OpenAiClient, method: str) -> None:
-    messages: list[ChatCompletionMessageParam] = [
+    messages: ListParams = [
         ChatCompletionSystemMessageParam(**_system_message().model_dump()),
     ]
     _run_chat(client, method, messages)
 
 
-def _append_user_message(question: str, messages: list[ChatCompletionMessageParam]) -> None:
+def _append_user_message(question: str, messages: ListParams) -> None:
     user_param = OpenAIChatMessage(
         role="user",
         content=question.strip(),
@@ -70,13 +68,10 @@ def _append_user_message(question: str, messages: list[ChatCompletionMessagePara
     messages.append(ChatCompletionUserMessageParam(**user_param.model_dump()))
 
 
-def _run_chat(
-    client: OpenAiClient,
-    method: str,
-    messages: list[ChatCompletionMessageParam],
-) -> None:
-    logger.info("Running chatbot...")
+def _run_chat(client: OpenAiClient, method: str, messages: ListParams) -> None:
+    logger.info("Running chatbot with model '%s' via '%s'", client.model, client.base_url)
     is_bytez = "api.bytez.com" in str(client.base_url)
+    # is_bytez = any(x in str(client.base_url) for x in ["api.bytez.com", "api.nvidia.com"])
 
     with suppress(KeyboardInterrupt):
         try:

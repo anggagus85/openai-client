@@ -5,16 +5,13 @@ from html import escape
 from json import JSONDecodeError, loads
 from logging import getLogger
 
-from openai.types.chat import (
-    ChatCompletionMessageParam,
-    ChatCompletionSystemMessageParam,
-    ChatCompletionUserMessageParam,
-)
+from openai.types.chat import ChatCompletionSystemMessageParam, ChatCompletionUserMessageParam
 from pydantic import ValidationError
 
 from openai_client.client import OpenAiClient
 from openai_client.schemas.ai import AnalysisFormat, ContactAnalysisResponse, EmailInquiry
 from openai_client.services.caller import caller
+from openai_client.types import ListParams
 
 logger = getLogger(__name__)
 
@@ -65,7 +62,7 @@ def _contact_analysis_prompt(name: str, message: str) -> str:
             """
 
 
-def _email_messages(content: str) -> list[ChatCompletionMessageParam]:
+def _email_messages(content: str) -> ListParams:
     return [
         ChatCompletionSystemMessageParam(
             role="system",
@@ -78,13 +75,13 @@ def _email_messages(content: str) -> list[ChatCompletionMessageParam]:
     ]
 
 
-def analyze_contact(email_inquiry: EmailInquiry, ai_client: OpenAiClient, method: str) -> str:
+def analyze_contact(email_inquiry: EmailInquiry, client: OpenAiClient, method: str) -> str:
     """
     Analyze contact inquiry using the configured AI backend.
 
     Args:
         email_inquiry: The contact inquiry request containing name, email, and message.
-        ai_client: The AI client instance.
+        client: The AI client instance.
         method: The method to use for analysis.
 
     Returns:
@@ -96,8 +93,12 @@ def analyze_contact(email_inquiry: EmailInquiry, ai_client: OpenAiClient, method
         _contact_analysis_prompt(email_inquiry.name, email_inquiry.message),
     )
 
-    logger.info("Analyzing email inquiry...")
-    response = caller(ai_client, messages, append=False)[method]()
+    logger.info(
+        "Analyzing email inquiry with model '%s' via '%s'",
+        client.model,
+        client.base_url,
+    )
+    response = caller(client, messages, append=False)[method]()
     try:
         response_dict = loads(response) if isinstance(response, str) else response
         analysis = AnalysisFormat.model_validate(response_dict)

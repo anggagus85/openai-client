@@ -31,9 +31,9 @@ def _do_chat(client: OpenAiClient, method: str) -> None:
 
 def _generate_itinerary(client: OpenAiClient, method: str) -> None:
     itinerary_req = ItineraryRequestMD(
-        duration=5,
-        interests=["food", "adventure", "culture"],
-        budget="US$ 1900",
+        duration=7,
+        interests=["culture", "beaches", "activities"],
+        budget="US$ 2000",
     )
     itinerary(itinerary_req, client, method)
 
@@ -62,29 +62,35 @@ def main() -> None:
         "openrouter": {
             "api_key": get_api_key("OPENROUTER_API_KEY"),
             "base_url": "https://openrouter.ai/api/v1",
-            "model": "minimax/minimax-m2.5:free",
+            # "model": "stepfun/step-3.5-flash:free",
+            "model": "nvidia/nemotron-nano-9b-v2:free",
         },
         "bytez": {
             "api_key": get_api_key("BYTEZ_API_KEY"),
             "base_url": "https://api.bytez.com/models/v2/openai/v1",
             "model": "Qwen/Qwen3-8B",
         },
+        "nvidia": {
+            "api_key": get_api_key("NVIDIA_API_KEY"),
+            "base_url": "https://integrate.api.nvidia.com/v1",
+            "model": "mistralai/mistral-large-3-675b-instruct-2512",
+            # "model": "moonshotai/kimi-k2-thinking",
+        },
     }
     client = OpenAiClient(**kwargs["openrouter"])
 
-    # client.list_models()
+    # client.list_models("bytez")
 
     # Notes:
-    # - method = "open_ai" or "stream" ->  all kwargs keys are valid
-    # - method = "bytez" ->  only kwargs["bytez"] is valid
-    method = ["open_ai", "bytez", "stream"]
+    # method = "open_ai" or "stream" ->  all kwargs keys are valid
+    # method = "bytez" ->  only kwargs["bytez"] is valid
+    methods = ["open_ai", "bytez", "stream"]
 
-    _do_chat(client, method[2])
+    # _do_chat(client, methods[2])
 
-    # Itinerary generation prefer to use bytez
-    # _generate_itinerary(client, method[1])
+    _generate_itinerary(client, methods[0])
 
-    # _email_inquiry(client, method[0])
+    # _email_inquiry(client, methods[0])
 
 
 if __name__ == "__main__":

@@ -269,6 +269,33 @@ wheels = [
 ]
 
 [[package]]
+name = "mdformat-footnote"
+version = "0.1.3"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "mdformat" },
+    { name = "mdit-py-plugins" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/3f/c0/0fe461e3c53eb72b35b642add6c3eaf1f90e43a574a18633955f9e89791d/mdformat_footnote-0.1.3.tar.gz", hash = "sha256:70617e61af87f59d7dea93a392c5093089a6d4551126fa18025c6fddb18bf742", size = 6430, upload-time = "2026-01-30T14:13:05.983Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/7e/ac/60d47237a0e37fe991cbf311f10f096a28cfdbbe25d1932dadf8e9abdac8/mdformat_footnote-0.1.3-py3-none-any.whl", hash = "sha256:3033184237cbaf2a71cc02a4c37f043a97c1f16d3ed6939bc104964e77aad0b3", size = 7767, upload-time = "2026-01-30T14:13:04.944Z" },
+]
+
+[[package]]
+name = "mdformat-frontmatter"
+version = "2.0.10"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "mdformat" },
+    { name = "mdit-py-plugins" },
+    { name = "ruamel-yaml" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/c0/94/ccb15e0535f35c21b2b533cafb232f11ac0e7046dd122029b7ec0513c82e/mdformat_frontmatter-2.0.10.tar.gz", hash = "sha256:decefcb4beb66cf111f17e8c0d82e60b208104c7922ec09564d05365db551bd8", size = 3958, upload-time = "2026-01-19T23:42:23.672Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ea/40/e61f8ed549bed3159a9677eadb89849ccca6de30eb90bf61e1b6026df96d/mdformat_frontmatter-2.0.10-py3-none-any.whl", hash = "sha256:c99f7c52de0403e39f48b6a1c2bb79a4c8ce69304a799ff0e403e3957aa3669b", size = 4636, upload-time = "2026-01-19T23:42:22.341Z" },
+]
+
+[[package]]
 name = "mdformat-gfm"
 version = "1.0.0"
 source = { registry = "https://pypi.org/simple" }
@@ -281,6 +308,19 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/56/6f/a626ebb142a290474401b67e2d61e73ce096bf7798ee22dfe6270f924b3f/mdformat_gfm-1.0.0.tar.gz", hash = "sha256:d1d49a409a6acb774ce7635c72d69178df7dce1dc8cdd10e19f78e8e57b72623", size = 10112, upload-time = "2025-10-16T09:12:22.402Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/e6/18/6bc2189b744dd383cad03764f41f30352b1278d2205096f77a29c0b327ad/mdformat_gfm-1.0.0-py3-none-any.whl", hash = "sha256:7305a50efd2a140d7c83505b58e3ac5df2b09e293f9bbe72f6c7bee8c678b005", size = 10970, upload-time = "2025-10-16T09:12:21.276Z" },
+]
+
+[[package]]
+name = "mdformat-gfm-alerts"
+version = "2.0.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "mdformat" },
+    { name = "mdit-py-plugins" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/c7/33/70619cf9e2b9e35857ebcf7e947e8f5370df2ff2a4ab666895783f8fab6c/mdformat_gfm_alerts-2.0.0.tar.gz", hash = "sha256:eb2b3189ad44ae28a6b6b714609dd3a30d6e3b898f02b1e6473d7b08df8bb3c0", size = 9687, upload-time = "2025-06-05T20:49:46.414Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/89/ea/22e093bb2ef3e25dc3ccc9d8392c14b069a007ae394a12e058d9e1f51c00/mdformat_gfm_alerts-2.0.0-py3-none-any.whl", hash = "sha256:e003422cc003bc6e936d0797553f23201095a1d1e8602c5062296d223f2ae516", size = 6752, upload-time = "2025-06-05T20:49:45.539Z" },
 ]
 
 [[package]]
@@ -331,8 +371,12 @@ dependencies = [
     { name = "bytez" },
     { name = "disposable-email-domains" },
     { name = "dotenv" },
+    { name = "httpx" },
     { name = "mdformat" },
+    { name = "mdformat-footnote" },
+    { name = "mdformat-frontmatter" },
     { name = "mdformat-gfm" },
+    { name = "mdformat-gfm-alerts" },
     { name = "openai" },
     { name = "pydantic", extra = ["email"] },
     { name = "rich" },
@@ -343,8 +387,12 @@ requires-dist = [
     { name = "bytez", specifier = ">=3.0.1" },
     { name = "disposable-email-domains", specifier = ">=0.0.169" },
     { name = "dotenv", specifier = ">=0.9.9" },
+    { name = "httpx", specifier = ">=0.28.1" },
     { name = "mdformat", specifier = ">=1.0.0" },
+    { name = "mdformat-footnote", specifier = ">=0.1.3" },
+    { name = "mdformat-frontmatter", specifier = ">=2.0.10" },
     { name = "mdformat-gfm", specifier = ">=1.0.0" },
+    { name = "mdformat-gfm-alerts", specifier = ">=2.0.0" },
     { name = "openai", specifier = ">=1.102.0" },
     { name = "pydantic", extras = ["email"], specifier = ">=2.11.7" },
     { name = "rich", specifier = ">=14.1.0" },
@@ -442,6 +490,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/fe/75/af448d8e52bf1d8fa6a9d089ca6c07ff4453d86c65c145d0a300bb073b9b/rich-14.1.0.tar.gz", hash = "sha256:e497a48b844b0320d45007cdebfeaeed8db2a4f4bcf49f15e455cfc4af11eaa8", size = 224441, upload-time = "2025-07-25T07:32:58.125Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/e3/30/3c4d035596d3cf444529e0b2953ad0466f6049528a879d27534700580395/rich-14.1.0-py3-none-any.whl", hash = "sha256:536f5f1785986d6dbdea3c75205c473f970777b4a0d6c6dd1b696aa05a3fa04f", size = 243368, upload-time = "2025-07-25T07:32:56.73Z" },
+]
+
+[[package]]
+name = "ruamel-yaml"
+version = "0.19.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/c7/3b/ebda527b56beb90cb7652cb1c7e4f91f48649fbcd8d2eb2fb6e77cd3329b/ruamel_yaml-0.19.1.tar.gz", hash = "sha256:53eb66cd27849eff968ebf8f0bf61f46cdac2da1d1f3576dd4ccee9b25c31993", size = 142709, upload-time = "2026-01-02T16:50:31.84Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/b8/0c/51f6841f1d84f404f92463fc2b1ba0da357ca1e3db6b7fbda26956c3b82a/ruamel_yaml-0.19.1-py3-none-any.whl", hash = "sha256:27592957fedf6e0b62f281e96effd28043345e0e66001f97683aa9a40c667c93", size = 118102, upload-time = "2026-01-02T16:50:29.201Z" },
 ]
 
 [[package]]
