@@ -4,7 +4,7 @@ from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-ENV_FILE = Path(__file__).parent.parent.parent.parent / ".env"
+ENV_FILE = Path.cwd() / ".env"
 
 WHATSAPP_NUMBER = "+6285847006743"
 

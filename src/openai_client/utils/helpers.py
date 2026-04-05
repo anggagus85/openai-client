@@ -18,7 +18,7 @@ def save_to_file(data: str, file_path: Path) -> None:
     try:
         with file_path.open("w", encoding="utf-8") as f:
             f.write(data)
-        logger.info(f"Data saved to '{file_path}'")
+        logger.info("Data saved to '%s'", file_path)
     except Exception:
         logger.exception("Failed to save data to file")
         raise
