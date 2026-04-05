@@ -18,7 +18,12 @@ class ExaSearchClient:
         self.api_key = api_key
         self.base_url = base_url
 
-    def search(self, query: str, num_results: int = 5) -> tuple[bool, str]:
+    def search(
+        self,
+        query: str,
+        num_results: int = 5,
+        contents: dict | None = None,
+    ) -> tuple[bool, str]:
         headers = {
             "x-api-key": self.api_key,
             "Content-Type": "application/json",
@@ -26,7 +31,8 @@ class ExaSearchClient:
         payload = {
             "query": query,
             "numResults": num_results,
-            "contents": {"text": True, "highlights": True},
+            "contents": contents or {"text": {"max_characters": 20000}},
+            "type": "auto",
         }
 
         try:
@@ -35,17 +41,20 @@ class ExaSearchClient:
                 response.raise_for_status()
                 data = response.json()
 
-            results = []
-            for i, result in enumerate(data.get("results", []), 1):
-                title = result.get("title", "Untitled")
-                url = result.get("url", "")
-                text = result.get("text", "")[:500]
-                results.append(f"{i}. **{title}**\n   URL: {url}\n   {text}...")
-
-            return True, "\n\n".join(results)
+            return True, self._process_results(data)
         except Exception as e:
             logger.exception("Exa search failed")
             return False, f"Search error: {e}"
+
+    def _process_results(self, data: dict) -> str:
+        results = []
+        for i, result in enumerate(data.get("results", []), 1):
+            title = result.get("title", "Untitled")
+            url = result.get("url", "")
+            text = result.get("text", "")[:500]
+            results.append(f"{i}. **{title}**\n   URL: {url}\n   {text}...")
+
+        return "\n\n".join(results)
 
     def __str__(self) -> str:
         return f"provider 'exa' via {self.base_url}"

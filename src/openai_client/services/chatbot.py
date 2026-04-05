@@ -363,7 +363,11 @@ def _search_bali_context(question: str) -> str | None:
     for provider in providers():
         logger.info("Chatbot searching with %s", provider)
         if isinstance(provider, ExaSearchClient):
-            success, results = provider.search(query, num_results=3)
+            success, results = provider.search(
+                query,
+                num_results=3,
+                contents={"highlights": {"max_characters": 8000}},
+            )
         elif isinstance(provider, BraveSearchClient):
             success, results = provider.search(query, count=3)
         else:
@@ -463,12 +467,11 @@ def _inject_search_context(question: str, messages: ListParams) -> int | None:
         if no search was performed / search failed.
     """
     if not _is_tourism_query(question):
-        return None
+        return
 
     rprint("[dim]Searching for latest information...[/dim]")
-    search_results = _search_bali_context(question)
-    if not search_results:
-        return None
+    if not (search_results := _search_bali_context(question)):
+        return
 
     # Insert search context just before the user message
     idx = len(messages) - 1
