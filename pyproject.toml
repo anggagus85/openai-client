@@ -26,6 +26,11 @@ dependencies = [
 [project.scripts]
 openai-client = "openai_client.main:main"
 
+[dependency-groups]
+dev = [
+  "pytest-cov>=7.1.0",
+]
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
