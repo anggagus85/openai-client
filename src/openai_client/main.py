@@ -6,6 +6,7 @@ from rich.logging import RichHandler
 from rich.traceback import install
 
 from openai_client.client import OpenAiClient
+from openai_client.configs import settings
 from openai_client.schemas.ai import EmailInquiry, ItineraryRequestMD
 from openai_client.services import (
     analyze_contact,
@@ -13,7 +14,7 @@ from openai_client.services import (
     confirmation_message,
     itinerary,
 )
-from openai_client.utils import get_api_key, save_to_file
+from openai_client.utils import save_to_file
 
 basicConfig(
     level="NOTSET",
@@ -27,6 +28,7 @@ getLogger("httpcore").setLevel(ERROR)
 getLogger("urllib3").setLevel(ERROR)
 getLogger("mdformat").setLevel(ERROR)
 getLogger("markdown_it").setLevel(ERROR)
+getLogger("httpx").setLevel(ERROR)
 install()
 
 
@@ -60,23 +62,23 @@ def main() -> None:
 
     kwargs = {
         "inception": {
-            "api_key": get_api_key("INCEPTION_API_KEY"),
+            "api_key": settings.INCEPTION_API_KEY,
             "base_url": "https://api.inceptionlabs.ai/v1",
             "model": "mercury-2",
         },
         "openrouter": {
-            "api_key": get_api_key("OPENROUTER_API_KEY"),
+            "api_key": settings.OPENROUTER_API_KEY,
             "base_url": "https://openrouter.ai/api/v1",
             # "model": "stepfun/step-3.5-flash:free",
             "model": "nvidia/nemotron-nano-9b-v2:free",
         },
         "bytez": {
-            "api_key": get_api_key("BYTEZ_API_KEY"),
+            "api_key": settings.BYTEZ_API_KEY,
             "base_url": "https://api.bytez.com/models/v2/openai/v1",
             "model": "Qwen/Qwen3-8B",
         },
         "nvidia": {
-            "api_key": get_api_key("NVIDIA_API_KEY"),
+            "api_key": settings.NVIDIA_API_KEY,
             "base_url": "https://integrate.api.nvidia.com/v1",
             "model": "mistralai/mistral-large-3-675b-instruct-2512",
             # "model": "moonshotai/kimi-k2-thinking",
@@ -87,13 +89,13 @@ def main() -> None:
     # client.list_models("bytez")
 
     # Notes:
-    # method = "open_ai" or "stream" ->  all kwargs keys are valid
+    # method = "completion" or "stream" ->  all kwargs keys are valid
     # method = "bytez" ->  only kwargs["bytez"] is valid
-    methods = ["open_ai", "bytez", "stream"]
+    methods = ["completion", "bytez", "stream"]
 
-    # _do_chat(client, methods[2])
+    _do_chat(client, methods[2])
 
-    _generate_itinerary(client, methods[0])
+    # _generate_itinerary(client, methods[0])
 
     # _email_inquiry(client, methods[0])
 

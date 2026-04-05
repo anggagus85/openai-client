@@ -10,6 +10,9 @@ from openai.types.chat import ChatCompletion
 from openai.types.chat.chat_completion_chunk import ChatCompletionChunk
 from rich.pretty import pprint
 
+from openai_client.configs import settings
+from openai_client.decorators.with_retry import with_retry
+from openai_client.errors import API_EXCEPTIONS
 from openai_client.types import ListParams
 from openai_client.utils import save_to_file
 
@@ -25,7 +28,13 @@ class OpenAiClient(OpenAI):
         self._bytez_params = {"temperature": 0.3}
         self._configs = {"temperature": 0.5, "model": model, "top_p": 1.0}
 
-    def open_ai(
+    @with_retry(
+        max_attempts=settings.AI_MAX_RETRIES,
+        base_delay=settings.AI_RETRY_DELAY,
+        max_delay=settings.AI_RETRY_DELAY * (settings.AI_BACKOFF_FACTOR**settings.AI_MAX_RETRIES),
+        exec_retry=API_EXCEPTIONS,
+    )
+    def completion(
         self,
         messages: ListParams,
         *,
@@ -42,6 +51,12 @@ class OpenAiClient(OpenAI):
             stream=stream,
         )
 
+    @with_retry(
+        max_attempts=settings.AI_MAX_RETRIES,
+        base_delay=settings.AI_RETRY_DELAY,
+        max_delay=settings.AI_RETRY_DELAY * (settings.AI_BACKOFF_FACTOR**settings.AI_MAX_RETRIES),
+        exec_retry=API_EXCEPTIONS,
+    )
     def bytez(self, messages: ListParams) -> Generator | Response:
 
         return self._bytez_model.run(messages, self._bytez_params)

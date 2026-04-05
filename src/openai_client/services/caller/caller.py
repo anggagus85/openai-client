@@ -1,9 +1,10 @@
 from collections.abc import Callable, Generator, Iterator
-from logging import ERROR, getLogger
+from contextlib import contextmanager
+from logging import getLogger
 from typing import cast
 
 from bytez.client import Response
-from openai import Stream
+from openai import RateLimitError, Stream
 from openai.types.chat import (
     ChatCompletion,
     ChatCompletionAssistantMessageParam,
@@ -12,13 +13,36 @@ from openai.types.chat import (
 from rich import print as rprint
 
 from openai_client.client import OpenAiClient
-from openai_client.errors import ApiError, AppSystemError
+from openai_client.errors import (
+    API_EXCEPTIONS,
+    SYSTEM_EXCEPTIONS,
+    ApiError,
+    AppSystemError,
+    UnknownError,
+)
 from openai_client.schemas.ai import OpenAIChatMessage
 from openai_client.types import ListParams
 
 logger = getLogger(__name__)
 
-getLogger("httpx").setLevel(ERROR)
+
+@contextmanager
+def _handle_api_call() -> Generator:
+    """Unified exception handling for OpenAI / Bytez API calls."""
+    try:
+        yield
+    except API_EXCEPTIONS as e:
+        logger.exception("API error")
+        raise ApiError(e) from e
+    except RateLimitError as e:
+        logger.exception("Too many requests, Try again later")
+        raise ApiError(e) from e
+    except SYSTEM_EXCEPTIONS as e:
+        logger.exception("System error")
+        raise AppSystemError(e) from e
+    except Exception as e:
+        logger.exception("Unknown error")
+        raise UnknownError(e) from e
 
 
 def _cleanup_answer(content: str) -> str:
@@ -48,14 +72,15 @@ def caller(
     is_bytez: bool = False,
 ) -> dict[str, Callable[..., str | None]]:
     return {
-        "open_ai": lambda: _call_open_ai(client, messages, append=append),
+        "completion": lambda: _call_completion(client, messages, append=append),
         "bytez": lambda: _call_bytez(client, messages, append=append),
         "stream": lambda: _iter_chunk(_stream_chunk(client, messages), is_bytez=is_bytez),
     }
 
 
-def _call_open_ai(client: OpenAiClient, messages: ListParams, *, append: bool = True) -> str:
-    completion = client.open_ai(messages)
+def _call_completion(client: OpenAiClient, messages: ListParams, *, append: bool = True) -> str:
+    with _handle_api_call():
+        completion = client.completion(messages)
 
     # Through the API, we obtain the response message (role=assistant) from the large language model
     if not (choices := cast(ChatCompletion, completion).choices):
@@ -72,7 +97,8 @@ def _call_open_ai(client: OpenAiClient, messages: ListParams, *, append: bool = 
 
 
 def _call_bytez(client: OpenAiClient, messages: ListParams, *, append: bool = True) -> str:
-    response = client.bytez(messages)
+    with _handle_api_call():
+        response = client.bytez(messages)
 
     if not isinstance(response, Response):
         rprint("\n[b i red]No reply..")
@@ -151,7 +177,8 @@ def _iter_chunk(chunks: Iterator[str | None], *, is_bytez: bool = False) -> None
 
 
 def _stream_chunk(client: OpenAiClient, messages: ListParams) -> Generator:
-    stream = cast(Stream[ChatCompletionChunk], client.open_ai(messages, stream=True))
+    with _handle_api_call():
+        stream = cast(Stream[ChatCompletionChunk], client.completion(messages, stream=True))
 
     accumulated = ""
     for chunk in stream:
@@ -178,8 +205,5 @@ def _append_assistant_message(messages: ListParams, content: str) -> None:
         messages: List of chat messages
         content: Assistant message content
     """
-    assistant_param = OpenAIChatMessage(
-        role="assistant",
-        content=content,
-    )
+    assistant_param = OpenAIChatMessage(role="assistant", content=content)
     messages.append(ChatCompletionAssistantMessageParam(**assistant_param.model_dump()))

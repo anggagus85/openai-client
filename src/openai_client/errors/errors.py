@@ -10,7 +10,6 @@ from openai import (
     LengthFinishReasonError,
     NotFoundError,
     PermissionDeniedError,
-    RateLimitError,
     UnprocessableEntityError,
 )
 
@@ -21,7 +20,6 @@ API_EXCEPTIONS = (
     NotFoundError,
     ConflictError,
     UnprocessableEntityError,
-    RateLimitError,
     InternalServerError,
     LengthFinishReasonError,
     ContentFilterFinishReasonError,

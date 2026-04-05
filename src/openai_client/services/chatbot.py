@@ -2,20 +2,14 @@
 
 from contextlib import suppress
 from logging import getLogger
+from re import IGNORECASE
+from re import compile as re_compile
 from re import escape as re_escape
-from re import search as re_search
 
 from openai.types.chat import ChatCompletionSystemMessageParam, ChatCompletionUserMessageParam
 from rich import print as rprint
 
 from openai_client.client import OpenAiClient
-from openai_client.errors import (
-    API_EXCEPTIONS,
-    SYSTEM_EXCEPTIONS,
-    ApiError,
-    AppSystemError,
-    UnknownError,
-)
 from openai_client.schemas.ai import OpenAIChatMessage
 from openai_client.services.caller import caller
 from openai_client.services.search import BraveSearchClient, ExaSearchClient, providers
@@ -314,6 +308,14 @@ _SKIP_PATTERNS: frozenset[str] = frozenset(
     },
 )
 
+# Single compiled regex alternating all tourism/Bali keywords with word
+# boundaries.  Built once at import time so _is_tourism_query avoids
+# recompiling per keyword on every call.
+_TOURISM_PATTERN = re_compile(
+    r"\b(?:" + "|".join(re_escape(kw) for kw in (_BALI_KEYWORDS | _TOURISM_KEYWORDS)) + r")\b",
+    IGNORECASE,
+)
+
 
 # ---------------------------------------------------------------------------
 # Search-augmentation helpers
@@ -334,14 +336,13 @@ def _is_tourism_query(question: str) -> bool:
     Returns:
         ``True`` when the question appears to be tourism-related.
     """
-    text = question.lower().strip()
+    text = question.strip()
 
     # Skip very short inputs and common non-tourism phrases
-    if len(text.split()) < 3 or text in _SKIP_PATTERNS:
+    if len(text.split()) < 3 or text.lower() in _SKIP_PATTERNS:
         return False
 
-    all_keywords = _BALI_KEYWORDS | _TOURISM_KEYWORDS
-    return any(re_search(rf"\b{re_escape(kw)}\b", text) for kw in all_keywords)
+    return _TOURISM_PATTERN.search(text) is not None
 
 
 def _search_bali_context(question: str) -> str | None:
@@ -482,38 +483,26 @@ def _run_chat(client: OpenAiClient, method: str, messages: ListParams) -> None:
     is_bytez = "api.bytez.com" in str(client.base_url)
 
     with suppress(KeyboardInterrupt):
-        try:
-            while True:
-                rprint("\n[b i blue]You:")
-                _append_user_message(question := input(), messages)
+        while True:
+            rprint("\n[b i blue]You:")
+            _append_user_message(question := input(), messages)
 
-                search_ctx_idx = _inject_search_context(question, messages)
+            search_ctx_idx = _inject_search_context(question, messages)
 
-                rprint("\n[b i green]AI:")
-                answer = caller(client, messages, is_bytez=is_bytez)[method]()
+            rprint("\n[b i green]AI:")
+            answer = caller(client, messages, is_bytez=is_bytez)[method]()
 
-                # Remove temporary search context from history
-                if search_ctx_idx is not None:
-                    messages.pop(search_ctx_idx)
+            # Remove temporary search context from history
+            if search_ctx_idx is not None:
+                messages.pop(search_ctx_idx)
 
-                if method == "stream":
-                    # Stream already printed output via _iter_chunk
-                    pass
-                elif not answer:
-                    rprint("\n[b i red]No reply.")
-                    continue
-                else:
-                    rprint(answer, end="\n", flush=True)
+            if method == "stream":
+                pass  # Stream already printed output via _iter_chunk
+            elif not answer:
+                rprint("\n[b i red]No reply.")
+                continue
+            else:
+                rprint(answer, end="\n", flush=True)
 
-                if "bye" in question.lower():
-                    break
-
-        except API_EXCEPTIONS as e:
-            logger.exception("API error")
-            raise ApiError(e) from e
-        except SYSTEM_EXCEPTIONS as e:
-            logger.exception("System error")
-            raise AppSystemError(e) from e
-        except Exception as e:
-            logger.exception("Unknown error")
-            raise UnknownError(e) from e
+            if "bye" in question.lower():
+                break

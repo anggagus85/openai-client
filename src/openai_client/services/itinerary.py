@@ -8,6 +8,7 @@ from mdformat import text as mdformat_text
 from openai.types.chat import ChatCompletionSystemMessageParam, ChatCompletionUserMessageParam
 
 from openai_client.client import OpenAiClient
+from openai_client.configs import WHATSAPP_NUMBER
 from openai_client.schemas.ai import ItineraryRequestMD
 from openai_client.services.caller import caller
 from openai_client.services.search import providers
@@ -15,8 +16,6 @@ from openai_client.types import ListParams
 from openai_client.utils import save_to_file
 
 logger = getLogger(__name__)
-
-WHATSAPP_NUMBER = "+6285847006743"
 
 
 def _topics(duration: int) -> str:

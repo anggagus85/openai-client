@@ -4,7 +4,7 @@ from logging import getLogger
 
 from httpx import Client
 
-from openai_client.utils import get_api_key
+from openai_client.configs import settings
 
 logger = getLogger(__name__)
 
@@ -92,12 +92,12 @@ class BraveSearchClient:
 
 def providers() -> list[ExaSearchClient | BraveSearchClient]:
     clients: list[ExaSearchClient | BraveSearchClient] = []
-    try:
-        clients.append(ExaSearchClient(api_key=get_api_key("EXA_API_KEY")))
-    except SearchClientError:
+    if settings.EXA_API_KEY:
+        clients.append(ExaSearchClient(api_key=settings.EXA_API_KEY))
+    else:
         logger.warning("EXA_API_KEY not available, skipping Exa provider")
-    try:
-        clients.append(BraveSearchClient(api_key=get_api_key("BRAVE_API_KEY")))
-    except SearchClientError:
+    if settings.BRAVE_API_KEY:
+        clients.append(BraveSearchClient(api_key=settings.BRAVE_API_KEY))
+    else:
         logger.warning("BRAVE_API_KEY not available, skipping Brave provider")
     return clients
