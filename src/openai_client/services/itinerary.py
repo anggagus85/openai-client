@@ -328,7 +328,7 @@ def _convert_table_to_whatsapp(table_lines: list[str]) -> list[str]:
             header_name = headers[i] if i < len(headers) else ""
             parts.append(f"{header_name} {cell}".strip())
         detail = " | ".join(parts)
-        result.append(f"  • *{label}*: {detail}" if detail else f"  • *{label}*")
+        result.append(f"  • **{label}**: {detail}" if detail else f"  • **{label}**")
 
     return result
 
@@ -403,11 +403,11 @@ def _markdown_to_whatsapp(md_text: str) -> str:
         # Links → text (url).
         transformed = _RE_LINK.sub(r"\1 (\2)", transformed)
 
+        # Italic: *text* → _text_ (processed first to avoid catching bold output).
+        transformed = _RE_ITALIC.sub(r"_\1_", transformed)
+
         # Bold: **text** → *text*.
         transformed = _RE_BOLD.sub(r"*\1*", transformed)
-
-        # Italic: *text* → _text_.
-        transformed = _RE_ITALIC.sub(r"_\1_", transformed)
 
         # Strip trailing whitespace (preserve leading for list indentation).
         transformed = transformed.rstrip()

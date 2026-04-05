@@ -93,9 +93,9 @@ def main() -> None:
     # method = "bytez" ->  only kwargs["bytez"] is valid
     methods = ["completion", "bytez", "stream"]
 
-    # _do_chat(client, methods[2])
+    _do_chat(client, methods[2])
 
-    _generate_itinerary(client, methods[0])
+    # _generate_itinerary(client, methods[0])
 
     # _email_inquiry(client, methods[0])
 
