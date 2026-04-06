@@ -10,12 +10,7 @@ from rich.traceback import install
 from openai_client.client import OpenAI
 from openai_client.configs import settings
 from openai_client.schemas.ai import EmailInquiry, ItineraryRequestMD
-from openai_client.services import (
-    analyze_contact,
-    chatbot,
-    confirmation_message,
-    itinerary,
-)
+from openai_client.services import Chatbot, EmailService, Itinerary
 from openai_client.utils import save_to_file
 
 basicConfig(
@@ -44,7 +39,7 @@ class Methods(StrEnum):
 
 
 async def _do_chat(client: OpenAI, method: str) -> None:
-    await chatbot(client, method)
+    await Chatbot(client).run(method)
 
 
 async def _generate_itinerary(client: OpenAI, method: str) -> None:
@@ -53,19 +48,20 @@ async def _generate_itinerary(client: OpenAI, method: str) -> None:
         interests=["wellness", "temples", "activities"],
         budget="US$ 1500",
     )
-    await itinerary(itinerary_req, client, method)
+    await Itinerary(client, itinerary_req).generate(method)
 
 
 async def _email_inquiry(client: OpenAI, method: str) -> None:
-    email_inquiry = EmailInquiry(
+    inquiry = EmailInquiry(
         name="John Doe",
         subject="Travel Inquiry",
         message="I would like to book a trip to Bali for 7 days. And for a smooth and safe drive please provide a driver who can speak English.",
         email="jhondoe@gmail.com",
     )
-    body = await analyze_contact(email_inquiry, client, method)
+    service = EmailService(client, inquiry)
+    body = await service.analyze_contact(method)
     save_to_file(body, Path.cwd() / "email_inquiry.html")
-    confirmation = await confirmation_message(email_inquiry, client, method)
+    confirmation = await service.confirmation_message(method)
     rprint(f"[b i green]confirmation :[/b i green]\n\n{confirmation.confirmation}")
 
 

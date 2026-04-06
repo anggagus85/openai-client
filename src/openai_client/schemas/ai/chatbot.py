@@ -1,7 +1,7 @@
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
-class OpenAIChatMessage(BaseModel):
+class OpenAIChat(BaseModel):
     """Model for individual chat messages in conversation history."""
 
     model_config = ConfigDict(extra="ignore")
@@ -38,7 +38,7 @@ class OpenAIChatRequest(BaseModel):
         description="The user's query",
         examples=["What are the best beaches in Bali?"],
     )
-    history: list[OpenAIChatMessage] = Field(
+    history: list[OpenAIChat] = Field(
         default=[],
         max_length=50,  # Limit conversation history
         description="The chat history",

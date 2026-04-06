@@ -6,50 +6,67 @@ from datetime import datetime
 from unittest.mock import patch
 
 from openai_client.schemas.ai import ItineraryRequestMD
-from openai_client.services.itinerary import (
-    _clean_markdown,
-    _itinerary_messages,
-    _itinerary_search_messages,
-    _prompt,
-    _search_bali_info,
-    _structure,
-    _topics,
-)
+from openai_client.services.itinerary import Itinerary
+from openai_client.utils import clean_markdown
 
 
 class TestTopics:
     def test_contains_daily_breakdown(self) -> None:
-        result = _topics(5)
+        req = ItineraryRequestMD(duration=5, interests=["beaches"], budget="US$ 1000")
+        instance = Itinerary.__new__(Itinerary)
+        instance._itinerary_req = req
+        result = instance._topics()
         assert "DAILY BREAKDOWN" in result
 
     def test_contains_duration_days(self) -> None:
-        result = _topics(7)
+        req = ItineraryRequestMD(duration=7, interests=["beaches"], budget="US$ 1000")
+        instance = Itinerary.__new__(Itinerary)
+        instance._itinerary_req = req
+        result = instance._topics()
         assert "7 full days" in result
 
     def test_contains_accommodations(self) -> None:
-        result = _topics(3)
+        req = ItineraryRequestMD(duration=3, interests=["beaches"], budget="US$ 1000")
+        instance = Itinerary.__new__(Itinerary)
+        instance._itinerary_req = req
+        result = instance._topics()
         assert "HANDPICKED ACCOMMODATIONS" in result
 
     def test_contains_culinary(self) -> None:
-        result = _topics(5)
+        req = ItineraryRequestMD(duration=5, interests=["beaches"], budget="US$ 1000")
+        instance = Itinerary.__new__(Itinerary)
+        instance._itinerary_req = req
+        result = instance._topics()
         assert "CULINARY EXPERIENCES" in result
 
     def test_contains_budget_breakdown(self) -> None:
-        result = _topics(5)
+        req = ItineraryRequestMD(duration=5, interests=["beaches"], budget="US$ 1000")
+        instance = Itinerary.__new__(Itinerary)
+        instance._itinerary_req = req
+        result = instance._topics()
         assert "COMPREHENSIVE BUDGET BREAKDOWN" in result
 
 
 class TestStructure:
     def test_contains_header(self) -> None:
-        result = _structure(5, "US$ 1000")
+        req = ItineraryRequestMD(duration=5, interests=["beaches"], budget="US$ 1000")
+        instance = Itinerary.__new__(Itinerary)
+        instance._itinerary_req = req
+        result = instance._structure()
         assert "Here's your 5-Days Bali trip Itinerary" in result
 
     def test_contains_friendly_note(self) -> None:
-        result = _structure(7, "US$ 1500")
+        req = ItineraryRequestMD(duration=7, interests=["beaches"], budget="US$ 1500")
+        instance = Itinerary.__new__(Itinerary)
+        instance._itinerary_req = req
+        result = instance._structure()
         assert "A Friendly Note" in result
 
     def test_contains_sections(self) -> None:
-        result = _structure(5, "US$ 1000")
+        req = ItineraryRequestMD(duration=5, interests=["beaches"], budget="US$ 1000")
+        instance = Itinerary.__new__(Itinerary)
+        instance._itinerary_req = req
+        result = instance._structure()
         assert "DAILY BREAKDOWN" in result
         assert "CULTURAL IMMERSION" in result
         assert "AUTHENTIC EXPERIENCES" in result
@@ -62,7 +79,9 @@ class TestPrompt:
             interests=["beaches", "temples"],
             budget="US$ 1000",
         )
-        result = _prompt(req)
+        instance = Itinerary.__new__(Itinerary)
+        instance._itinerary_req = req
+        result = instance._prompt()
         assert "Interests: beaches, temples" in result
         assert "Duration: 5" in result
         assert "Budget: US$ 1000" in result
@@ -73,7 +92,9 @@ class TestPrompt:
             interests=["food"],
             budget="US$ 500",
         )
-        result = _prompt(req, search_context="Bali food guide 2024")
+        instance = Itinerary.__new__(Itinerary)
+        instance._itinerary_req = req
+        result = instance._prompt(search_context="Bali food guide 2024")
         assert "Bali food guide 2024" in result
 
     def test_no_search_context_when_empty(self) -> None:
@@ -82,18 +103,20 @@ class TestPrompt:
             interests=["food"],
             budget="US$ 500",
         )
-        result = _prompt(req)
+        instance = Itinerary.__new__(Itinerary)
+        instance._itinerary_req = req
+        result = instance._prompt()
         assert "search_context" not in result
 
 
 class TestCleanMarkdown:
     def test_returns_formatted_text(self) -> None:
-        result = _clean_markdown("# Hello\n\n**World**")
+        result = clean_markdown("# Hello\n\n**World**")
         assert "# Hello" in result
 
     def test_fallback_on_error(self) -> None:
-        with patch("openai_client.services.itinerary.mdformat_text", side_effect=Exception("fail")):
-            result = _clean_markdown("raw text")
+        with patch("openai_client.utils.helpers.mdformat_text", side_effect=Exception("fail")):
+            result = clean_markdown("raw text")
             assert result == "raw text"
 
 
@@ -104,24 +127,27 @@ class TestItineraryMessages:
             interests=["beaches"],
             budget="US$ 1000",
         )
-        messages = _itinerary_messages(req)
+        instance = Itinerary.__new__(Itinerary)
+        instance._itinerary_req = req
+        messages = instance._itinerary_messages()
         assert len(messages) == 2
         assert messages[0]["role"] == "system"
         assert messages[1]["role"] == "user"
 
 
 class TestItinerarySearchMessages:
-    def test_returns_two_messages_with_search_context(self) -> None:
+    def test_returns_user_param_with_search_context(self) -> None:
         req = ItineraryRequestMD(
             duration=5,
             interests=["beaches"],
             budget="US$ 1000",
         )
-        messages = _itinerary_search_messages(req, "Search results here")
-        assert len(messages) == 2
-        assert messages[0]["role"] == "system"
-        assert isinstance(messages[1]["content"], str)
-        assert "Search results here" in messages[1]["content"]
+        instance = Itinerary.__new__(Itinerary)
+        instance._itinerary_req = req
+        user_param = instance._itinerary_search_messages("Search results here")
+        assert user_param["role"] == "user"
+        assert isinstance(user_param["content"], str)
+        assert "Search results here" in user_param["content"]
 
 
 class TestSearchBaliInfo:
@@ -131,7 +157,9 @@ class TestSearchBaliInfo:
             interests=["temples", "food"],
             budget="US$ 1500",
         )
-        result = _search_bali_info(req)
+        instance = Itinerary.__new__(Itinerary)
+        instance._itinerary_req = req
+        result = instance._search_bali_info()
         assert "temples" in result
         assert "food" in result
 
@@ -141,15 +169,18 @@ class TestSearchBaliInfo:
             interests=["surfing"],
             budget="US$ 2000",
         )
-        result = _search_bali_info(req)
+        instance = Itinerary.__new__(Itinerary)
+        instance._itinerary_req = req
+        result = instance._search_bali_info()
         assert "10 day" in result
 
     def test_contains_current_year(self) -> None:
-
         req = ItineraryRequestMD(
             duration=5,
             interests=["beaches"],
             budget="US$ 1000",
         )
-        result = _search_bali_info(req)
+        instance = Itinerary.__new__(Itinerary)
+        instance._itinerary_req = req
+        result = instance._search_bali_info()
         assert str(datetime.now().year) in result

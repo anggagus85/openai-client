@@ -7,32 +7,32 @@ from pydantic import ValidationError
 
 from openai_client.schemas.ai.chatbot import (
     ChatResponse,
-    OpenAIChatMessage,
+    OpenAIChat,
     OpenAIChatRequest,
 )
 
 
-class TestOpenAIChatMessage:
+class TestOpenAIChat:
     def test_valid_user_message(self) -> None:
-        msg = OpenAIChatMessage(role="user", content="Hello!")
+        msg = OpenAIChat(role="user", content="Hello!")
         assert msg.role == "user"
         assert msg.content == "Hello!"
 
     def test_valid_assistant_message(self) -> None:
-        msg = OpenAIChatMessage(role="assistant", content="Hi there!")
+        msg = OpenAIChat(role="assistant", content="Hi there!")
         assert msg.role == "assistant"
 
     def test_valid_system_message(self) -> None:
-        msg = OpenAIChatMessage(role="system", content="You are helpful.")
+        msg = OpenAIChat(role="system", content="You are helpful.")
         assert msg.role == "system"
 
     def test_invalid_role_raises(self) -> None:
         with pytest.raises(ValidationError) as exc_info:
-            OpenAIChatMessage(role="admin", content="test")
+            OpenAIChat(role="admin", content="test")
         assert any(e["loc"] == ("role",) for e in exc_info.value.errors())
 
     def test_extra_fields_ignored(self) -> None:
-        msg = OpenAIChatMessage.model_validate(
+        msg = OpenAIChat.model_validate(
             {"role": "user", "content": "Hi", "extra_field": "ignored"},
         )
         assert not hasattr(msg, "extra_field")
@@ -48,8 +48,8 @@ class TestOpenAIChatRequest:
         req = OpenAIChatRequest(
             query="Tell me more",
             history=[
-                OpenAIChatMessage(role="user", content="What about Bali?"),
-                OpenAIChatMessage(role="assistant", content="Bali is great!"),
+                OpenAIChat(role="user", content="What about Bali?"),
+                OpenAIChat(role="assistant", content="Bali is great!"),
             ],
         )
         assert len(req.history) == 2

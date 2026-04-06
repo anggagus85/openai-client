@@ -4,31 +4,34 @@
 
 from asyncio import run as async_run
 from datetime import datetime
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 from openai_client.schemas.ai import (
     AnalysisFormat,
     ContactAnalysisResponse,
     EmailInquiry,
 )
-from openai_client.services.email_inquiry import (
-    _confirmation_message_prompt,
-    _contact_analysis_prompt,
-    _create_body,
-    _email_messages,
-    analyze_contact,
-    confirmation_message,
-)
+from openai_client.services.email_inquiry import EmailService, _email_messages
 
 
 class TestContactAnalysisPrompt:
     def test_contains_name_and_message(self) -> None:
-        result = _contact_analysis_prompt("John", "I want to book a trip")
+        inquiry = EmailInquiry(name="John", message="I want to book a trip", email="john@test.com")
+        service = EmailService.__new__(EmailService)
+        service._inquiry = inquiry
+        result = service._contact_analysis_prompt()
         assert "John" in result
         assert "I want to book a trip" in result
 
     def test_contains_json_format_instruction(self) -> None:
-        result = _contact_analysis_prompt("Jane", "Hello")
+        inquiry = EmailInquiry(
+            name="Jane",
+            message="Hello there, I need help",
+            email="jane@test.com",
+        )
+        service = EmailService.__new__(EmailService)
+        service._inquiry = inquiry
+        result = service._contact_analysis_prompt()
         assert "JSON" in result
         assert '"summary"' in result
         assert '"category"' in result
@@ -50,8 +53,10 @@ class TestCreateBody:
             message="I want to visit Bali",
             email="john@example.com",
         )
+        service = EmailService.__new__(EmailService)
+        service._inquiry = inquiry
         analysis = AnalysisFormat(name="John Doe")
-        body = _create_body(inquiry, analysis)
+        body = service._create_body(analysis)
         assert "John Doe" in body
         assert "john@example.com" in body
         assert "I want to visit Bali" in body
@@ -62,6 +67,8 @@ class TestCreateBody:
             message="I need help",
             email="jane@example.com",
         )
+        service = EmailService.__new__(EmailService)
+        service._inquiry = inquiry
         analysis = AnalysisFormat(
             name="Jane",
             summary="Help request",
@@ -69,7 +76,7 @@ class TestCreateBody:
             urgency="High",
             keywords=["help", "urgent"],
         )
-        body = _create_body(inquiry, analysis)
+        body = service._create_body(analysis)
         assert "Help request" in body
         assert "Support Request" in body
         assert "High" in body
@@ -81,21 +88,25 @@ class TestCreateBody:
             message="Test message",
             email="test@example.com",
         )
+        service = EmailService.__new__(EmailService)
+        service._inquiry = inquiry
         analysis = AnalysisFormat(name="Test")
-        body = _create_body(inquiry, analysis)
+        body = service._create_body(analysis)
         assert "<!DOCTYPE html>" in body
         assert "</html>" in body
         assert "BaliBlissed" in body
 
     def test_create_body_escapes_html_in_message(self) -> None:
         """Verify _create_body escapes HTML; uses a fake inquiry to bypass EmailInquiry validators."""
-        fake_inquiry = EmailInquiry(
+        inquiry = EmailInquiry(
             name="Test",
             message="This is Bold message text here",
             email="test@example.com",
         )
+        service = EmailService.__new__(EmailService)
+        service._inquiry = inquiry
         analysis = AnalysisFormat(name="Test")
-        body = _create_body(fake_inquiry, analysis)
+        body = service._create_body(analysis)
         assert "<b>" not in body
 
     def test_contains_current_year(self) -> None:
@@ -104,8 +115,10 @@ class TestCreateBody:
             message="This is a test message for validation",
             email="test@example.com",
         )
+        service = EmailService.__new__(EmailService)
+        service._inquiry = inquiry
         analysis = AnalysisFormat(name="Test")
-        body = _create_body(inquiry, analysis)
+        body = service._create_body(analysis)
         assert str(datetime.now().year) in body
 
     def test_handles_keywords_as_string(self) -> None:
@@ -114,8 +127,10 @@ class TestCreateBody:
             message="This is a test message for validation",
             email="test@example.com",
         )
+        service = EmailService.__new__(EmailService)
+        service._inquiry = inquiry
         analysis = AnalysisFormat(name="Test", keywords=["keyword1", "keyword2"])
-        body = _create_body(inquiry, analysis)
+        body = service._create_body(analysis)
         assert "keyword1, keyword2" in body
 
 
@@ -126,7 +141,9 @@ class TestConfirmationMessagePrompt:
             message="I would like to inquire about your services",
             email="john@example.com",
         )
-        result = _confirmation_message_prompt(inquiry, sent=True)
+        service = EmailService.__new__(EmailService)
+        service._inquiry = inquiry
+        result = service._confirmation_message_prompt(sent=True)
         assert "John" in result
         assert "sent successfully" in result
 
@@ -136,13 +153,15 @@ class TestConfirmationMessagePrompt:
             message="I would like to inquire about your services",
             email="jane@example.com",
         )
-        result = _confirmation_message_prompt(inquiry, sent=False)
+        service = EmailService.__new__(EmailService)
+        service._inquiry = inquiry
+        result = service._confirmation_message_prompt(sent=False)
         assert "Jane" in result
         assert "failed to send" in result
         assert "technical issue" in result
 
 
-def _make_async_mock(return_value: str | None) -> AsyncMock:
+def _make_async_mock(return_value: str | dict | None) -> AsyncMock:
     async_m = AsyncMock()
     async_m.return_value = return_value
     return async_m
@@ -158,19 +177,25 @@ class TestAnalyzeContact:
         mock_client = MagicMock()
         mock_client.model = "test-model"
         mock_client.base_url = "https://api.example.com"
+        mock_client.call.return_value = {
+            "completion": _make_async_mock(
+                {
+                    "name": "John",
+                    "summary": "Booking request",
+                    "category": "Booking Inquiry",
+                    "urgency": "Medium",
+                    "suggested_reply": "Hello",
+                    "required_action": "Book it",
+                    "keywords": ["bali"],
+                },
+            ),
+        }
 
-        with patch(
-            "openai_client.services.email_inquiry.caller",
-            return_value={
-                "completion": _make_async_mock(
-                    '{"name":"John","summary":"Booking request","category":"Booking Inquiry","urgency":"Medium","suggested_reply":"Hello","required_action":"Book it","keywords":["bali"]}',
-                ),
-            },
-        ):
-            result = async_run(analyze_contact(inquiry, mock_client, "completion"))
-            assert "John" in result
-            assert "Booking request" in result
-            assert "Booking Inquiry" in result
+        service = EmailService(mock_client, inquiry)
+        result = async_run(service.analyze_contact("completion"))
+        assert "John" in result
+        assert "Booking request" in result
+        assert "Booking Inquiry" in result
 
     def test_fallback_on_invalid_json(self) -> None:
         inquiry = EmailInquiry(
@@ -181,14 +206,12 @@ class TestAnalyzeContact:
         mock_client = MagicMock()
         mock_client.model = "test-model"
         mock_client.base_url = "https://api.example.com"
+        mock_client.call.return_value = {"completion": _make_async_mock("not valid json")}
 
-        with patch(
-            "openai_client.services.email_inquiry.caller",
-            return_value={"completion": _make_async_mock("not valid json")},
-        ):
-            result = async_run(analyze_contact(inquiry, mock_client, "completion"))
-            assert "Jane" in result
-            assert "General Information" in result
+        service = EmailService(mock_client, inquiry)
+        result = async_run(service.analyze_contact("completion"))
+        assert "Jane" in result
+        assert "General Information" in result
 
     def test_fallback_on_validation_error(self) -> None:
         inquiry = EmailInquiry(
@@ -199,13 +222,11 @@ class TestAnalyzeContact:
         mock_client = MagicMock()
         mock_client.model = "test-model"
         mock_client.base_url = "https://api.example.com"
+        mock_client.call.return_value = {"completion": _make_async_mock('{"summary":"test"}')}
 
-        with patch(
-            "openai_client.services.email_inquiry.caller",
-            return_value={"completion": _make_async_mock('{"summary":"test"}')},
-        ):
-            result = async_run(analyze_contact(inquiry, mock_client, "completion"))
-            assert "Test" in result
+        service = EmailService(mock_client, inquiry)
+        result = async_run(service.analyze_contact("completion"))
+        assert "Test" in result
 
 
 class TestConfirmationMessage:
@@ -218,14 +239,14 @@ class TestConfirmationMessage:
         mock_client = MagicMock()
         mock_client.model = "test-model"
         mock_client.base_url = "https://api.example.com"
+        mock_client.call.return_value = {
+            "completion": _make_async_mock("Thank you for your inquiry."),
+        }
 
-        with patch(
-            "openai_client.services.email_inquiry.caller",
-            return_value={"completion": _make_async_mock("Thank you for your inquiry.")},
-        ):
-            result = async_run(confirmation_message(inquiry, mock_client, "completion"))
-            assert isinstance(result, ContactAnalysisResponse)
-            assert result.confirmation == "Thank you for your inquiry."
+        service = EmailService(mock_client, inquiry)
+        result = async_run(service.confirmation_message("completion"))
+        assert isinstance(result, ContactAnalysisResponse)
+        assert result.confirmation == "Thank you for your inquiry."
 
     def test_fallback_on_validation_error(self) -> None:
         inquiry = EmailInquiry(
@@ -236,14 +257,12 @@ class TestConfirmationMessage:
         mock_client = MagicMock()
         mock_client.model = "test-model"
         mock_client.base_url = "https://api.example.com"
+        mock_client.call.return_value = {"completion": _make_async_mock(None)}
 
-        with patch(
-            "openai_client.services.email_inquiry.caller",
-            return_value={"completion": _make_async_mock(None)},
-        ):
-            result = async_run(confirmation_message(inquiry, mock_client, "completion"))
-            assert isinstance(result, ContactAnalysisResponse)
-            assert "Jane" in result.confirmation
+        service = EmailService(mock_client, inquiry)
+        result = async_run(service.confirmation_message("completion"))
+        assert isinstance(result, ContactAnalysisResponse)
+        assert "Jane" in result.confirmation
 
     def test_failed_sent_flag(self) -> None:
         inquiry = EmailInquiry(
@@ -254,12 +273,8 @@ class TestConfirmationMessage:
         mock_client = MagicMock()
         mock_client.model = "test-model"
         mock_client.base_url = "https://api.example.com"
+        mock_client.call.return_value = {"completion": _make_async_mock(None)}
 
-        with patch(
-            "openai_client.services.email_inquiry.caller",
-            return_value={"completion": _make_async_mock(None)},
-        ):
-            result = async_run(
-                confirmation_message(inquiry, mock_client, "completion", sent=False),
-            )
-            assert "failed to send" in result.confirmation
+        service = EmailService(mock_client, inquiry)
+        result = async_run(service.confirmation_message("completion", sent=False))
+        assert "failed to send" in result.confirmation

@@ -1,6 +1,6 @@
 # src/openai_client/schemas/ai/__init__.py
 
-from openai_client.schemas.ai.chatbot import ChatResponse, OpenAIChatMessage, OpenAIChatRequest
+from openai_client.schemas.ai.chatbot import ChatResponse, OpenAIChat, OpenAIChatRequest
 from openai_client.schemas.ai.email import AnalysisFormat, ContactAnalysisResponse, EmailInquiry
 from openai_client.schemas.ai.itinerary import (
     ItineraryMD,
@@ -18,6 +18,6 @@ __all__ = [
     "ItineraryRequestMD",
     "ItineraryRequestTXT",
     "ItineraryTXT",
-    "OpenAIChatMessage",
+    "OpenAIChat",
     "OpenAIChatRequest",
 ]

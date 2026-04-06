@@ -10,12 +10,13 @@ from re import escape as re_escape
 from rich import print as rprint
 
 from openai_client.client import OpenAI
-from openai_client.schemas.ai import OpenAIChatMessage
-from openai_client.services.caller import caller
+from openai_client.schemas.ai import OpenAIChat
 from openai_client.services.web_search import WebSearch
 from openai_client.types import ListParams, SystemParam, UserParam
 
 logger = getLogger(__name__)
+
+IGNORED = KeyboardInterrupt, CancelledError, InterruptedError, EOFError
 
 _BALI_KEYWORDS: frozenset[str] = frozenset(
     {
@@ -310,47 +311,8 @@ _TOURISM_PATTERN = re_compile(
 )
 
 
-def _is_tourism_query(question: str) -> bool:
-    text = question.strip()
-
-    if len(text.split()) < 3 or text.lower() in _SKIP_PATTERNS:
-        return False
-
-    return _TOURISM_PATTERN.search(text) is not None
-
-
-async def _search_bali_context(question: str) -> str | None:
-    configs = {
-        "num_results": 3,
-        "contents": {"highlights": {"max_characters": 8000}},
-        "count": 3,
-    }
-    web_search = WebSearch("Chatbot searching Bali latest information with", configs)
-
-    if not (results := await web_search.search(f"Bali latest {question}")):
-        return
-
-    return results
-
-
-def _build_search_context_message(results: str) -> SystemParam:
-    return SystemParam(
-        role="system",
-        content=f"""\
-<search_context>
-The following is current information from the web relevant to the user's question:
-
-{results}
-
-Use this information to provide accurate, up-to-date answers. If the search results
-contradict your training data, prefer the search results for time-sensitive information
-(prices, hours, availability). Always maintain your BaliBlissed Concierge persona.
-</search_context>""",
-    )
-
-
-def _system_message() -> OpenAIChatMessage:
-    return OpenAIChatMessage(
+def _chat_system_message() -> OpenAIChat:
+    return OpenAIChat(
         role="system",
         content="""
     <assignment>
@@ -381,61 +343,104 @@ def _system_message() -> OpenAIChatMessage:
     )
 
 
-async def chatbot(client: OpenAI, method: str) -> None:
-    messages: ListParams = [
-        SystemParam(**_system_message().model_dump()),
-    ]
-    await _run_chat(client, method, messages)
+class Chatbot:
+    def __init__(self, client: OpenAI) -> None:
+        self._client = client
+        self._messages: ListParams = [
+            SystemParam(**_chat_system_message().model_dump()),
+        ]
+        self._client.messages = self._messages
+        self._question: str = ""
+        self._search_results: str = ""
 
+    def _is_tourism_query(self) -> bool:
+        text = self._question.strip()
 
-def _append_user_message(question: str, messages: ListParams) -> None:
-    user_param = OpenAIChatMessage(
-        role="user",
-        content=question.strip(),
-    )
-    messages.append(UserParam(**user_param.model_dump()))
+        if len(text.split()) < 3 or text.lower() in _SKIP_PATTERNS:
+            return False
 
+        return _TOURISM_PATTERN.search(text) is not None
 
-async def _augment_with_search(question: str, messages: ListParams) -> int | None:
-    if not _is_tourism_query(question):
-        return
+    async def run(self, method: str) -> None:
+        await self._ask(method)
 
-    rprint("[dim]Searching for latest information...[/dim]")
-    if not (search_results := await _search_bali_context(question)):
-        return
+    def _append_user_message(self, question: str) -> None:
+        user_param = OpenAIChat(
+            role="user",
+            content=question.strip(),
+        )
+        self._messages.append(UserParam(**user_param.model_dump()))
+        self._client.messages = self._messages
 
-    # Insert search context just before the user message
-    idx = len(messages) - 1
-    messages.insert(idx, _build_search_context_message(search_results))
-    return idx
+    async def _ask(self, method: str) -> None:
+        logger.info("Running chatbot with %s", self._client)
+        is_bytez = "api.bytez.com" in str(self._client.base_url)
 
+        with suppress(*IGNORED):
+            while True:
+                rprint("\n[b i blue]You:")
+                self._append_user_message(question := await to_thread(input))
+                self._question = question
 
-async def _run_chat(client: OpenAI, method: str, messages: ListParams) -> None:
-    logger.info("Running chatbot with %s", client)
-    is_bytez = "api.bytez.com" in str(client.base_url)
+                search_ctx_idx = await self._augment_with_search()
 
-    with suppress(KeyboardInterrupt, CancelledError, InterruptedError, EOFError):
-        while True:
-            rprint("\n[b i blue]You:")
-            _append_user_message(question := await to_thread(input), messages)
+                rprint("\n[b i green]AI:")
+                answer = await self._client.call(append=False, is_bytez=is_bytez)[method]()
 
-            search_ctx_idx = await _augment_with_search(question, messages)
+                # Remove temporary search context from history
+                if search_ctx_idx is not None:
+                    self._messages.pop(search_ctx_idx)
 
-            rprint("\n[b i green]AI:")
-            answer = await caller(client, messages, append=False, is_bytez=is_bytez)[method]()
+                if method == "stream":
+                    # Stream already printed output via _iter_chunk
+                    pass
+                elif not answer:
+                    rprint("\n[b i red]No reply.")
+                    continue
+                else:
+                    rprint(answer, end="\n", flush=True)
 
-            # Remove temporary search context from history
-            if search_ctx_idx is not None:
-                messages.pop(search_ctx_idx)
+                if "bye" in self._question.lower():
+                    break
 
-            if method == "stream":
-                # Stream already printed output via _iter_chunk
-                pass
-            elif not answer:
-                rprint("\n[b i red]No reply.")
-                continue
-            else:
-                rprint(answer, end="\n", flush=True)
+    async def _augment_with_search(self) -> int | None:
+        if not self._is_tourism_query():
+            return
 
-            if "bye" in question.lower():
-                break
+        rprint("[dim]Searching for latest information...[/dim]")
+        if not (search_results := await self._search_bali_context()):
+            return
+
+        self._search_results = search_results
+        # Insert search context just before the user message
+        idx = len(self._messages) - 1
+        self._messages.insert(idx, self._build_search_context_message())
+        return idx
+
+    async def _search_bali_context(self) -> str | None:
+        configs = {
+            "num_results": 3,
+            "contents": {"highlights": {"max_characters": 8000}},
+            "count": 3,
+        }
+        web_search = WebSearch("Chatbot searching Bali latest information with", configs)
+
+        if not (results := await web_search.search(f"Bali latest {self._question}")):
+            return
+
+        return results
+
+    def _build_search_context_message(self) -> SystemParam:
+        return SystemParam(
+            role="system",
+            content=f"""\
+    <search_context>
+    The following is current information from the web relevant to the user's question:
+
+    {self._search_results}
+
+    Use this information to provide accurate, up-to-date answers. If the search results
+    contradict your training data, prefer the search results for time-sensitive information
+    (prices, hours, availability). Always maintain your BaliBlissed Concierge persona.
+    </search_context>""",
+        )

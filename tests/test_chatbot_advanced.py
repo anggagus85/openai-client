@@ -5,67 +5,69 @@
 from asyncio import run as async_run
 from unittest.mock import patch
 
-from openai_client.services.chatbot import _append_user_message, _augment_with_search
+from openai_client.services.chatbot import Chatbot
 from openai_client.types import SystemParam, UserParam
 
 
 class TestAppendUserMessage:
-    def test_appends_user_message(self) -> None:
-        messages: list = []
-        _append_user_message("  Hello Bali  ", messages)
-        assert len(messages) == 1
-        assert messages[0]["role"] == "user"
-        assert messages[0]["content"] == "Hello Bali"
+    def test_appends_user_message(self, mock_chatbot: Chatbot) -> None:
+        chatbot = mock_chatbot
 
-    def test_strips_whitespace(self) -> None:
-        messages: list = []
-        _append_user_message("   query   ", messages)
-        assert messages[0]["content"] == "query"
+        chatbot._append_user_message("  Hello Bali  ")
+        assert len(chatbot._messages) == 1
+        assert chatbot._messages[0]["role"] == "user"
+        assert chatbot._messages[0]["content"] == "Hello Bali"
+
+    def test_strips_whitespace(self, mock_chatbot: Chatbot) -> None:
+        chatbot = mock_chatbot
+
+        chatbot._append_user_message("   query   ")
+        assert chatbot._messages[0]["content"] == "query"
 
 
 class TestAugmentWithSearch:
-    def test_returns_original_for_non_tourism_query(self) -> None:
-        messages: list = [
+    def test_returns_original_for_non_tourism_query(self, mock_chatbot: Chatbot) -> None:
+        chatbot = mock_chatbot
+        chatbot._messages = [
             SystemParam(role="system", content="system"),
             UserParam(role="user", content="hi"),
         ]
-        result = async_run(_augment_with_search("hi", messages))
-        assert result is None
-        assert len(messages) == 2
+        chatbot._question = "hi"
 
-    def test_returns_original_when_search_fails(self) -> None:
-        messages: list = [
+        result = async_run(chatbot._augment_with_search())
+        assert result is None
+        assert len(chatbot._messages) == 2
+
+    def test_returns_original_when_search_fails(self, mock_chatbot: Chatbot) -> None:
+        chatbot = mock_chatbot
+        chatbot._messages = [
             SystemParam(role="system", content="system"),
             UserParam(
                 role="user",
                 content="What are the best beaches in Bali?",
             ),
         ]
+        chatbot._question = "What are the best beaches in Bali?"
 
-        with patch("openai_client.services.chatbot._search_bali_context", return_value=None):
-            result = async_run(
-                _augment_with_search("What are the best beaches in Bali?", messages),
-            )
+        with patch.object(chatbot, "_search_bali_context", return_value=None):
+            result = async_run(chatbot._augment_with_search())
 
         assert result is None
-        assert len(messages) == 2
+        assert len(chatbot._messages) == 2
 
-    def test_returns_augmented_when_search_succeeds(self) -> None:
-        messages: list = [
+    def test_returns_augmented_when_search_succeeds(self, mock_chatbot: Chatbot) -> None:
+        chatbot = mock_chatbot
+        chatbot._messages = [
             SystemParam(role="system", content="system"),
             UserParam(
                 role="user",
                 content="What are the best beaches in Bali?",
             ),
         ]
+        chatbot._question = "What are the best beaches in Bali?"
 
-        with patch(
-            "openai_client.services.chatbot._search_bali_context",
-            return_value="Bali beach info",
-        ):
-            result = async_run(
-                _augment_with_search("What are the best beaches in Bali?", messages),
-            )
+        with patch.object(chatbot, "_search_bali_context", return_value="Bali beach info"):
+            result = async_run(chatbot._augment_with_search())
 
         assert result == 1
-        assert len(messages) == 3
+        assert len(chatbot._messages) == 3

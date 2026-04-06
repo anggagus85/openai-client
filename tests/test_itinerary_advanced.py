@@ -12,11 +12,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from openai_client.schemas.ai import ItineraryRequestMD
-from openai_client.services.itinerary import (
-    _generate_and_save,
-    itinerary,
-)
-from openai_client.types import ListParams
+from openai_client.services.itinerary import Itinerary
 
 
 @pytest.fixture
@@ -37,12 +33,8 @@ def itinerary_request() -> ItineraryRequestMD:
 
 
 @contextmanager
-def mock_itinerary_caller(content: str) -> Generator[MagicMock]:
-    mock_caller = AsyncMock(return_value=content)
-    with patch(
-        "openai_client.services.itinerary.caller",
-        return_value={"completion": mock_caller},
-    ) as mock:
+def mock_itinerary_caller() -> Generator[None]:
+    with patch.object(Itinerary, "_generate_and_save", new_callable=AsyncMock) as mock:
         yield mock
 
 
@@ -72,21 +64,18 @@ def temp_cwd() -> Generator[Path]:
 
 class TestGenerateAndSave:
     def test_saves_markdown_and_text(self, mock_client: MagicMock) -> None:
-        messages: ListParams = [
-            {
-                "role": "system",
-                "content": "You are a helpful assistant.",
-            },
-            {
-                "role": "user",
-                "content": "Test Itinerary\n\nDay 1: Beach",
-            },
-        ]
-        with temp_cwd(), mock_itinerary_caller("# Test Itinerary\n\nDay 1: Beach"):
-            async_run(_generate_and_save(messages, mock_client, "completion"))
+        instance = Itinerary.__new__(Itinerary)
+        instance._client = mock_client
+        instance._client.messages = []
 
-            md_path = Path.cwd() / "itinerary.md"
-            txt_path = Path.cwd() / "itinerary.txt"
+        with temp_cwd() as cwd:
+            mock_client.call.return_value = {
+                "completion": AsyncMock(return_value="# Test Itinerary\n\nDay 1: Beach"),
+            }
+            async_run(instance._generate_and_save("completion"))
+
+            md_path = cwd / "itinerary.md"
+            txt_path = cwd / "itinerary.txt"
             assert md_path.exists()
             assert txt_path.exists()
             assert "# Test Itinerary" in md_path.read_text()
@@ -98,12 +87,16 @@ class TestItinerary:
         itinerary_request: ItineraryRequestMD,
         mock_client: MagicMock,
     ) -> None:
+        instance = Itinerary(mock_client, itinerary_request)
+
         with (
             mock_web_search(results="Search results") as mock_search,
-            mock_itinerary_caller("# Generated Itinerary"),
             temp_cwd(),
         ):
-            async_run(itinerary(itinerary_request, mock_client, "completion"))
+            mock_client.call.return_value = {
+                "completion": AsyncMock(return_value="# Generated Itinerary"),
+            }
+            async_run(instance.generate("completion"))
 
         mock_search.call_tracker.assert_called_once()
 
@@ -112,12 +105,16 @@ class TestItinerary:
         itinerary_request: ItineraryRequestMD,
         mock_client: MagicMock,
     ) -> None:
+        instance = Itinerary(mock_client, itinerary_request)
+
         with (
             mock_web_search(results=""),
-            mock_itinerary_caller("# Fallback Itinerary"),
             temp_cwd() as cwd,
         ):
-            async_run(itinerary(itinerary_request, mock_client, "completion"))
+            mock_client.call.return_value = {
+                "completion": AsyncMock(return_value="# Fallback Itinerary"),
+            }
+            async_run(instance.generate("completion"))
 
             md_path = cwd / "itinerary.md"
             txt_path = cwd / "itinerary.txt"
@@ -130,12 +127,14 @@ class TestItinerary:
         itinerary_request: ItineraryRequestMD,
         mock_client: MagicMock,
     ) -> None:
+        instance = Itinerary(mock_client, itinerary_request)
+
         with (
             mock_web_search(results="Search results"),
-            mock_itinerary_caller(""),
             temp_cwd() as cwd,
         ):
-            async_run(itinerary(itinerary_request, mock_client, "completion"))
+            mock_client.call.return_value = {"completion": AsyncMock(return_value="")}
+            async_run(instance.generate("completion"))
 
             md_path = cwd / "itinerary.md"
             assert not md_path.exists()

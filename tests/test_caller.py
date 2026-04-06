@@ -16,34 +16,31 @@ from openai import (
     UnprocessableEntityError,
 )
 
+from openai_client.client.openai_client import OpenAI, _handle_api_call
 from openai_client.errors import (
     SYSTEM_EXCEPTIONS,
     ApiError,
     AppSystemError,
     UnknownError,
 )
-from openai_client.services.caller.caller import (
-    _cleanup_answer,
-    _handle_api_call,
-)
 
 
 class TestCleanupAnswer:
     def test_strips_whitespace(self) -> None:
-        assert _cleanup_answer("  hello  ") == "hello"
+        assert OpenAI._cleanup_answer("  hello  ") == "hello"
 
     def test_removes_faq_tag(self) -> None:
-        assert _cleanup_answer("<think> reasoning </think> actual answer") == "actual answer"
+        assert OpenAI._cleanup_answer("<think> reasoning </think> actual answer") == "actual answer"
 
     def test_no_faq_tag(self) -> None:
-        assert _cleanup_answer("just plain text") == "just plain text"
+        assert OpenAI._cleanup_answer("just plain text") == "just plain text"
 
     def test_empty_string(self) -> None:
-        assert _cleanup_answer("") == ""
+        assert OpenAI._cleanup_answer("") == ""
 
     def test_multiple_faq_tags(self) -> None:
         assert (
-            _cleanup_answer("<think> a </think> <think> b </think> answer")
+            OpenAI._cleanup_answer("<think> a </think> <think> b </think> answer")
             == "<think> b </think> answer"
         )
 
