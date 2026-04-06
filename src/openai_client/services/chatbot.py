@@ -1,12 +1,17 @@
 # src/openai_client/services/chatbot.py
 
+from asyncio import to_thread
 from contextlib import suppress
 from logging import getLogger
 from re import IGNORECASE
 from re import compile as re_compile
 from re import escape as re_escape
 
-from openai.types.chat import ChatCompletionSystemMessageParam, ChatCompletionUserMessageParam
+from openai.types.chat import (
+    ChatCompletionAssistantMessageParam,
+    ChatCompletionSystemMessageParam,
+    ChatCompletionUserMessageParam,
+)
 from rich import print as rprint
 
 from openai_client.client import OpenAiClient
@@ -16,10 +21,6 @@ from openai_client.services.web_search import WebSearch
 from openai_client.types import ListParams
 
 logger = getLogger(__name__)
-
-# ---------------------------------------------------------------------------
-# Search-augmentation keyword sets
-# ---------------------------------------------------------------------------
 
 _BALI_KEYWORDS: frozenset[str] = frozenset(
     {
@@ -308,80 +309,36 @@ _SKIP_PATTERNS: frozenset[str] = frozenset(
     },
 )
 
-# Single compiled regex alternating all tourism/Bali keywords with word
-# boundaries.  Built once at import time so _is_tourism_query avoids
-# recompiling per keyword on every call.
 _TOURISM_PATTERN = re_compile(
     r"\b(?:" + "|".join(re_escape(kw) for kw in (_BALI_KEYWORDS | _TOURISM_KEYWORDS)) + r")\b",
     IGNORECASE,
 )
 
 
-# ---------------------------------------------------------------------------
-# Search-augmentation helpers
-# ---------------------------------------------------------------------------
-
-
 def _is_tourism_query(question: str) -> bool:
-    """
-    Detect whether a user question likely relates to Bali tourism.
-
-    Uses word-boundary regex matching against curated keyword sets.
-    Short greetings and farewells are skipped so we avoid unnecessary
-    search latency on trivial messages.
-
-    Args:
-        question: The raw user input.
-
-    Returns:
-        ``True`` when the question appears to be tourism-related.
-    """
     text = question.strip()
 
-    # Skip very short inputs and common non-tourism phrases
     if len(text.split()) < 3 or text.lower() in _SKIP_PATTERNS:
         return False
 
     return _TOURISM_PATTERN.search(text) is not None
 
 
-def _search_bali_context(question: str) -> str | None:
-    """
-    Search the web for current Bali information relevant to *question*.
-
-    Iterates through available search providers (Exa, Brave) and returns
-    the first successful result.  Returns ``None`` when every provider
-    fails or no providers are configured.
-
-    Args:
-        question: The user's tourism-related question.
-
-    Returns:
-        Formatted search results string, or ``None``.
-    """
+async def _search_bali_context(question: str) -> str | None:
     configs = {
-        "num_results": 3,  # for exa
-        "contents": {"highlights": {"max_characters": 8000}},  # for exa
-        "count": 3,  # for brave
+        "num_results": 3,
+        "contents": {"highlights": {"max_characters": 8000}},
+        "count": 3,
     }
     web_search = WebSearch("Chatbot searching Bali latest information with", configs)
 
-    if not (results := web_search.search(f"Bali latest {question}")):
+    if not (results := await web_search.search(f"Bali latest {question}")):
         return
 
     return results
 
 
 def _build_search_context_message(results: str) -> ChatCompletionSystemMessageParam:
-    """
-    Wrap search results in a system message for LLM context injection.
-
-    Args:
-        results: Formatted search results string.
-
-    Returns:
-        A ``ChatCompletionSystemMessageParam`` containing the search context.
-    """
     return ChatCompletionSystemMessageParam(
         role="system",
         content=f"""\
@@ -405,35 +362,35 @@ def _system_message() -> OpenAIChatMessage:
     Your name is "Made", you are the official BaliBlissed Concierge, a friendly and expert customer service assistant dedicated to crafting the perfect Balinese getaway. 🌴🥥✨
     </assignment>
 
-    <personality_&_style>
+    <personality&_style>
     - Introduction : Introduce yourself as BaliBlissed Concierge.
     - Vibe: Be exceptionally warm, welcoming, and enthusiastic. You are the digital face of Bali hospitality.
     - Engagement: Use emojis liberally to make your content engaging, fun, and vibrant! 🏝️🍹
     - Formatting: Use bold text and bullet points to ensure your recommendations are easy to scan for travelers on the move.
-    </personality_&_style>
+    </personality&_style>
 
-    <knowledge_&_scope>
+    <knowledge&_scope>
     - Bali Expert: You specialize in Balinese culture, luxury villas, hidden jungle waterfalls, and the best surf spots. 🗺️🌺
     - Strictly Bali: You are an expert ONLY on Bali. If a user asks about other destinations (like Thailand or Europe), politely pivot the conversation back to the wonders of Bali.
     - Company First: Always redirect to BaliBlissed website for any booking inquiries, itinerary, and detailed information.
-    </knowledge_&_scope>
+    </knowledge&_scope>
 
-    <boundaries_&_safety>
+    <boundaries&_safety>
     - No over-reply: Focus only on the user's question. Do not provide suggestions, itineraries, information, prices, or recommendations unless the user asks.
     - No Professional Advice: Never provide legal, medical, or financial advice.
     - Just a glimpse: If the user asks for more information, suggestions, itineraries, prices, or recommendations, give a glimpse and be concise. If user ask for more details, redirect them to the official BaliBlissed website for more information.
     - Accuracy: If you aren't sure about a specific opening time or price, suggest the user check the official BaliBlissed website or contact the venue directly.
     - Prohibited: Reject any questions involving terrorism, racism, pornography, or violence.
-    </boundaries_&_safety>
+    </boundaries&_safety>
     """,
     )
 
 
-def chatbot(client: OpenAiClient, method: str) -> None:
+async def chatbot(client: OpenAiClient, method: str) -> None:
     messages: ListParams = [
         ChatCompletionSystemMessageParam(**_system_message().model_dump()),
     ]
-    _run_chat(client, method, messages)
+    await _run_chat(client, method, messages)
 
 
 def _append_user_message(question: str, messages: ListParams) -> None:
@@ -444,59 +401,49 @@ def _append_user_message(question: str, messages: ListParams) -> None:
     messages.append(ChatCompletionUserMessageParam(**user_param.model_dump()))
 
 
-def _inject_search_context(question: str, messages: ListParams) -> int | None:
-    """
-    Conditionally inject web-search context into *messages*.
-
-    When the question is tourism-related, searches the web and inserts a
-    temporary system message right before the latest user message.
-
-    Args:
-        question: The raw user input.
-        messages: The conversation history (mutated in-place).
-
-    Returns:
-        The index at which the context message was inserted, or ``None``
-        if no search was performed / search failed.
-    """
+async def _augment_with_search(question: str, messages: ListParams) -> ListParams:
     if not _is_tourism_query(question):
-        return
+        return messages
 
     rprint("[dim]Searching for latest information...[/dim]")
-    if not (search_results := _search_bali_context(question)):
-        return
+    if not (search_results := await _search_bali_context(question)):
+        return messages
 
-    # Insert search context just before the user message
-    idx = len(messages) - 1
-    messages.insert(idx, _build_search_context_message(search_results))
-    return idx
+    augmented = list(messages)
+    augmented.insert(len(augmented) - 1, _build_search_context_message(search_results))
+    return augmented
 
 
-def _run_chat(client: OpenAiClient, method: str, messages: ListParams) -> None:
+async def _run_chat(client: OpenAiClient, method: str, messages: ListParams) -> None:
     logger.info("Running chatbot with %s", client)
     is_bytez = "api.bytez.com" in str(client.base_url)
 
     with suppress(KeyboardInterrupt):
         while True:
             rprint("\n[b i blue]You:")
-            _append_user_message(question := input(), messages)
+            _append_user_message(question := await to_thread(input), messages)
 
-            search_ctx_idx = _inject_search_context(question, messages)
+            augmented_messages = await _augment_with_search(question, messages)
 
             rprint("\n[b i green]AI:")
-            answer = caller(client, messages, is_bytez=is_bytez)[method]()
-
-            # Remove temporary search context from history
-            if search_ctx_idx is not None:
-                messages.pop(search_ctx_idx)
+            answer = await caller(client, augmented_messages, append=False, is_bytez=is_bytez)[
+                method
+            ]()
 
             if method == "stream":
-                pass  # Stream already printed output via _iter_chunk
+                if answer is not None:
+                    _append_assistant_to_history(messages, answer)
             elif not answer:
                 rprint("\n[b i red]No reply.")
                 continue
             else:
+                _append_assistant_to_history(messages, answer)
                 rprint(answer, end="\n", flush=True)
 
             if "bye" in question.lower():
                 break
+
+
+def _append_assistant_to_history(messages: ListParams, content: str) -> None:
+    assistant_param = OpenAIChatMessage(role="assistant", content=content)
+    messages.append(ChatCompletionAssistantMessageParam(**assistant_param.model_dump()))

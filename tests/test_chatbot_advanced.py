@@ -1,14 +1,15 @@
 # tests/test_chatbot_advanced.py
 
-"""Advanced tests for chatbot service - _inject_search_context, _append_user_message, _run_chat."""
+"""Advanced tests for chatbot service - _augment_with_search, _append_user_message."""
 
+from asyncio import run as async_run
 from unittest.mock import patch
 
 from openai.types.chat import ChatCompletionSystemMessageParam, ChatCompletionUserMessageParam
 
 from openai_client.services.chatbot import (
     _append_user_message,
-    _inject_search_context,
+    _augment_with_search,
 )
 
 
@@ -26,17 +27,34 @@ class TestAppendUserMessage:
         assert messages[0]["content"] == "query"
 
 
-class TestInjectSearchContext:
-    def test_returns_none_for_non_tourism_query(self) -> None:
+class TestAugmentWithSearch:
+    def test_returns_original_for_non_tourism_query(self) -> None:
         messages: list = [
             ChatCompletionSystemMessageParam(role="system", content="system"),
             ChatCompletionUserMessageParam(role="user", content="hi"),
         ]
-        result = _inject_search_context("hi", messages)
-        assert result is None
+        result = async_run(_augment_with_search("hi", messages))
+        assert result is messages
         assert len(messages) == 2
 
-    def test_injects_search_context_for_tourism_query(self) -> None:
+    def test_returns_original_when_search_fails(self) -> None:
+        messages: list = [
+            ChatCompletionSystemMessageParam(role="system", content="system"),
+            ChatCompletionUserMessageParam(
+                role="user",
+                content="What are the best beaches in Bali?",
+            ),
+        ]
+
+        with patch("openai_client.services.chatbot._search_bali_context", return_value=None):
+            result = async_run(
+                _augment_with_search("What are the best beaches in Bali?", messages),
+            )
+
+        assert result is messages
+        assert len(messages) == 2
+
+    def test_returns_augmented_when_search_succeeds(self) -> None:
         messages: list = [
             ChatCompletionSystemMessageParam(role="system", content="system"),
             ChatCompletionUserMessageParam(
@@ -49,38 +67,11 @@ class TestInjectSearchContext:
             "openai_client.services.chatbot._search_bali_context",
             return_value="Bali beach info",
         ):
-            result = _inject_search_context("What are the best beaches in Bali?", messages)
+            result = async_run(
+                _augment_with_search("What are the best beaches in Bali?", messages),
+            )
 
-        assert result is not None
-        assert len(messages) == 3
-        assert messages[result]["role"] == "system"
-
-    def test_returns_none_when_search_fails(self) -> None:
-        messages: list = [
-            ChatCompletionSystemMessageParam(role="system", content="system"),
-            ChatCompletionUserMessageParam(
-                role="user",
-                content="What are the best beaches in Bali?",
-            ),
-        ]
-
-        with patch("openai_client.services.chatbot._search_bali_context", return_value=None):
-            result = _inject_search_context("What are the best beaches in Bali?", messages)
-
-        assert result is None
-        assert len(messages) == 2
-
-    def test_returns_none_when_no_providers(self) -> None:
-        messages: list = [
-            ChatCompletionSystemMessageParam(role="system", content="system"),
-            ChatCompletionUserMessageParam(
-                role="user",
-                content="What are the best beaches in Bali?",
-            ),
-        ]
-
-        with patch("openai_client.services.web_search._providers", return_value=[]):
-            result = _inject_search_context("What are the best beaches in Bali?", messages)
-
-        assert result is None
+        assert result is not messages
+        assert len(result) == 3
+        assert result[-2]["role"] == "system"
         assert len(messages) == 2

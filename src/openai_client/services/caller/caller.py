@@ -1,10 +1,10 @@
-from collections.abc import Callable, Generator, Iterator
-from contextlib import contextmanager
+from collections.abc import AsyncGenerator, AsyncIterator, Callable
+from contextlib import asynccontextmanager
 from logging import getLogger
 from typing import cast
 
 from bytez.client import Response
-from openai import RateLimitError, Stream
+from openai import AsyncStream, RateLimitError
 from openai.types.chat import (
     ChatCompletion,
     ChatCompletionAssistantMessageParam,
@@ -26,9 +26,8 @@ from openai_client.types import ListParams
 logger = getLogger(__name__)
 
 
-@contextmanager
-def _handle_api_call() -> Generator:
-    """Unified exception handling for OpenAI / Bytez API calls."""
+@asynccontextmanager
+async def _handle_api_call() -> AsyncGenerator:
     try:
         yield
     except API_EXCEPTIONS as e:
@@ -46,20 +45,8 @@ def _handle_api_call() -> Generator:
 
 
 def _cleanup_answer(content: str) -> str:
-    """
-    Cleanup the answer from the response.
-
-    Strip and remove <think> </think> tag if exist
-
-    Args:
-        content: Response content
-
-    Returns:
-        Stripped answer
-    """
     answer = content.strip()
     if "</think>" in answer and len(parts := answer.split("</think>", 1)) > 1:
-        # bytez api response tend to add `<think> </think>` tag
         answer = parts[1].strip()
     return answer
 
@@ -70,7 +57,7 @@ def caller(
     *,
     append: bool = True,
     is_bytez: bool = False,
-) -> dict[str, Callable[..., str | None]]:
+) -> dict[str, Callable]:
     return {
         "completion": lambda: _call_completion(client, messages, append=append),
         "bytez": lambda: _call_bytez(client, messages, append=append),
@@ -78,16 +65,15 @@ def caller(
     }
 
 
-def _call_completion(
+async def _call_completion(
     client: OpenAiClient,
     messages: ListParams,
     *,
     append: bool = True,
 ) -> str | None:
-    with _handle_api_call():
-        completion = client.completion(messages)
+    async with _handle_api_call():
+        completion = await client.completion(messages)
 
-    # Through the API, we obtain the response message (role=assistant) from the large language model
     if not (choices := cast(ChatCompletion, completion).choices):
         logger.warning("OpenAI returned empty choices")
         return ""
@@ -95,14 +81,14 @@ def _call_completion(
 
     if content := assistant_message.content:
         answer = _cleanup_answer(content)
-        if append:  # for chatbot memory context
-            _append_assistant_message(messages, answer)
+        if append:
+            await _append_assistant_message(messages, answer)
         return answer
 
 
-def _call_bytez(client: OpenAiClient, messages: ListParams, *, append: bool = True) -> str:
-    with _handle_api_call():
-        response = client.bytez(messages)
+async def _call_bytez(client: OpenAiClient, messages: ListParams, *, append: bool = True) -> str:
+    async with _handle_api_call():
+        response = await client.bytez(messages)
 
     if not isinstance(response, Response):
         rprint("\n[b i red]No reply..")
@@ -127,28 +113,17 @@ def _call_bytez(client: OpenAiClient, messages: ListParams, *, append: bool = Tr
         raise AppSystemError(details)
 
     answer = _cleanup_answer(out_dict["content"])
-    if append:  # for chatbot memory context
-        _append_assistant_message(messages, answer)
+    if append:
+        await _append_assistant_message(messages, answer)
     return answer
 
 
-def _iter_chunk(chunks: Iterator[str | None], *, is_bytez: bool = False) -> None:
-    """
-    Iterate over streamed tokens and print them to the console.
-
-    Filters out any content before the closing ``</think>`` tag, which is commonly
-    included in Bytez API responses as part of their internal ``<think> ... </think>``
-    reasoning block. Only the actual answer (content after ``</think>``) is printed.
-
-    Args:
-        chunks: An iterator yielding streamed token strings from the API.
-        is_bytez: Whether the API is Bytez.
-    """
+async def _iter_chunk(chunks: AsyncIterator[str | None], *, is_bytez: bool = False) -> None:
     buffer = ""
     started = False
     skipping_leading = False
 
-    for token in chunks:
+    async for token in chunks:
         if token is None:
             return
 
@@ -159,20 +134,17 @@ def _iter_chunk(chunks: Iterator[str | None], *, is_bytez: bool = False) -> None
             continue
 
         if not started:
-            # Accumulate tokens until the closing ``</think>`` tag is found
             buffer += token
             if "</think>" not in buffer:
                 continue
-            # Extract content after the last ``</think>`` occurrence
             buffer = buffer.split("</think>")[-1]
             started = True
             skipping_leading = True
-            current_token = buffer  # Use remaining buffer content as current token
+            current_token = buffer
 
         if skipping_leading:
-            # Skip leading whitespace/newlines immediately after ``</think>``
             if not (current_token := current_token.lstrip()):
-                continue  # Still whitespace, skip to next token
+                continue
             skipping_leading = False
 
         rprint(current_token, end="", flush=True)
@@ -180,12 +152,18 @@ def _iter_chunk(chunks: Iterator[str | None], *, is_bytez: bool = False) -> None
     print()
 
 
-def _stream_chunk(client: OpenAiClient, messages: ListParams) -> Generator:
-    with _handle_api_call():
-        stream = cast(Stream[ChatCompletionChunk], client.completion(messages, stream=True))
+async def _stream_chunk(
+    client: OpenAiClient,
+    messages: ListParams,
+) -> AsyncGenerator[str | None]:
+    async with _handle_api_call():
+        stream = cast(
+            AsyncStream[ChatCompletionChunk],
+            await client.completion(messages, stream=True),
+        )
 
     accumulated = ""
-    for chunk in stream:
+    async for chunk in stream:
         if not chunk.choices:
             continue
         if chunk.choices[0].finish_reason:
@@ -195,19 +173,12 @@ def _stream_chunk(client: OpenAiClient, messages: ListParams) -> Generator:
             accumulated += content
             yield content
 
-    if accumulated:  # Only append if we received content
-        _append_assistant_message(messages, accumulated)  # for chatbot memory context
+    if accumulated:
+        await _append_assistant_message(messages, accumulated)
     else:
         yield None
 
 
-def _append_assistant_message(messages: ListParams, content: str) -> None:
-    """
-    Append assistant message to conversation history for maintain the context/conversation history.
-
-    Args:
-        messages: List of chat messages
-        content: Assistant message content
-    """
+async def _append_assistant_message(messages: ListParams, content: str) -> None:
     assistant_param = OpenAIChatMessage(role="assistant", content=content)
     messages.append(ChatCompletionAssistantMessageParam(**assistant_param.model_dump()))

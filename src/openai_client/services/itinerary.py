@@ -297,7 +297,7 @@ def _convert_table_to_whatsapp(table_lines: list[str]) -> list[str]:
     Returns:
         Converted lines suitable for WhatsApp display.
     """
-    if len(table_lines) < 2:  # noqa: PLR2004
+    if len(table_lines) < 2:
         return table_lines
 
     # Extract header names from the first row.
@@ -436,10 +436,14 @@ def _itinerary_messages(itinerary_req: ItineraryRequestMD) -> ListParams:
     ]
 
 
-def _plain_itinerary(itinerary_req: ItineraryRequestMD, client: OpenAiClient, method: str) -> None:
+async def _plain_itinerary(
+    itinerary_req: ItineraryRequestMD,
+    client: OpenAiClient,
+    method: str,
+) -> None:
     logger.info("Generating itinerary with %s", client)
     messages = _itinerary_messages(itinerary_req)
-    _generate_and_save(messages, client, method)
+    await _generate_and_save(messages, client, method)
 
 
 def _itinerary_search_messages(
@@ -482,22 +486,22 @@ def _search_bali_info(itinerary_req: ItineraryRequestMD) -> str:
     )
 
 
-def itinerary(itinerary_req: ItineraryRequestMD, client: OpenAiClient, method: str) -> None:
+async def itinerary(itinerary_req: ItineraryRequestMD, client: OpenAiClient, method: str) -> None:
     web_search = WebSearch("Searching latest Bali itinerary information with")
 
-    if not (results := web_search.search(_search_bali_info(itinerary_req))):
+    if not (results := await web_search.search(_search_bali_info(itinerary_req))):
         logger.warning("Search returned no results or error, proceeding without search data")
-        _plain_itinerary(itinerary_req, client, method)
+        await _plain_itinerary(itinerary_req, client, method)
         return
 
     logger.info("Generating itinerary with %s", client)
     messages = _itinerary_search_messages(itinerary_req, results)
 
-    _generate_and_save(messages, client, method)
+    await _generate_and_save(messages, client, method)
 
 
-def _generate_and_save(messages: ListParams, client: OpenAiClient, method: str) -> None:
-    if not (content := caller(client, messages, append=False)[method]()):
+async def _generate_and_save(messages: ListParams, client: OpenAiClient, method: str) -> None:
+    if not (content := await caller(client, messages, append=False)[method]()):
         logger.warning("No itinerary content returned from OpenAI method %s", method)
         return
 

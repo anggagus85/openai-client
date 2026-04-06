@@ -1,3 +1,4 @@
+from asyncio import run as async_run
 from enum import StrEnum
 from logging import ERROR, basicConfig, getLogger
 from pathlib import Path
@@ -42,29 +43,29 @@ class Methods(StrEnum):
     STREAM = "stream"
 
 
-def _do_chat(client: OpenAiClient, method: str) -> None:
-    chatbot(client, method)
+async def _do_chat(client: OpenAiClient, method: str) -> None:
+    await chatbot(client, method)
 
 
-def _generate_itinerary(client: OpenAiClient, method: str) -> None:
+async def _generate_itinerary(client: OpenAiClient, method: str) -> None:
     itinerary_req = ItineraryRequestMD(
         duration=6,
         interests=["wellness", "temples", "activities"],
         budget="US$ 1500",
     )
-    itinerary(itinerary_req, client, method)
+    await itinerary(itinerary_req, client, method)
 
 
-def _email_inquiry(client: OpenAiClient, method: str) -> None:
+async def _email_inquiry(client: OpenAiClient, method: str) -> None:
     email_inquiry = EmailInquiry(
         name="John Doe",
         subject="Travel Inquiry",
         message="I would like to book a trip to Bali for 7 days. And for a smooth and safe drive please provide a driver who can speak English.",
         email="jhondoe@gmail.com",
     )
-    body = analyze_contact(email_inquiry, client, method)
+    body = await analyze_contact(email_inquiry, client, method)
     save_to_file(body, Path.cwd() / "email_inquiry.html")
-    confirmation = confirmation_message(email_inquiry, client, method)
+    confirmation = await confirmation_message(email_inquiry, client, method)
     rprint(f"[b i green]confirmation :[/b i green]\n\n{confirmation.confirmation}")
 
 
@@ -96,11 +97,11 @@ def main() -> None:
 
     # client.list_models("openrouter")
 
-    _do_chat(client, Methods.STREAM)
+    async_run(_do_chat(client, Methods.STREAM))
 
-    # _generate_itinerary(client, Methods.COMPLETION)
+    # async_run(_generate_itinerary(client, Methods.COMPLETION))
 
-    # _email_inquiry(client, Methods.COMPLETION)
+    # async_run(_email_inquiry(client, Methods.COMPLETION))
 
 
 if __name__ == "__main__":

@@ -38,58 +38,62 @@ class TestLogBeforeSleep:
 class TestWithRetry:
     def test_returns_callable(self) -> None:
         @with_retry(max_attempts=3)
-        def dummy() -> str:
+        async def dummy() -> str:
             return "ok"
 
         assert callable(dummy)
 
-    def test_successful_call_no_retry(self) -> None:
+    @pytest.mark.asyncio
+    async def test_successful_call_no_retry(self) -> None:
         call_count = 0
 
         @with_retry(max_attempts=3, base_delay=0.01, max_delay=0.01)
-        def succeeds() -> str:
+        async def succeeds() -> str:
             nonlocal call_count
             call_count += 1
             return "success"
 
-        result = succeeds()
+        result = await succeeds()
         assert result == "success"
         assert call_count == 1
 
-    def test_retries_on_connection_error(self) -> None:
+    @pytest.mark.asyncio
+    async def test_retries_on_connection_error(self) -> None:
         call_count = 0
 
         @with_retry(max_attempts=3, base_delay=0.01, max_delay=0.01)
-        def fails_twice() -> str:
+        async def fails_twice() -> str:
             nonlocal call_count
             call_count += 1
             if call_count < 3:
                 raise ConnectionError("fail")
             return "success"
 
-        result = fails_twice()
+        result = await fails_twice()
         assert result == "success"
         assert call_count == 3
 
-    def test_raises_after_max_attempts(self) -> None:
+    @pytest.mark.asyncio
+    async def test_raises_after_max_attempts(self) -> None:
         @with_retry(max_attempts=2, base_delay=0.01, max_delay=0.01)
-        def always_fails() -> str:
+        async def always_fails() -> str:
             details = "always fails"
             raise ConnectionError(details)
 
         with pytest.raises(ConnectionError):
-            always_fails()
+            await always_fails()
 
-    def test_does_not_retry_on_other_exceptions(self) -> None:
+    @pytest.mark.asyncio
+    async def test_does_not_retry_on_other_exceptions(self) -> None:
         call_count = 0
 
         @with_retry(max_attempts=3, base_delay=0.01, max_delay=0.01)
-        def raises_value_error() -> str:
+        async def raises_value_error() -> str:
             nonlocal call_count
             call_count += 1
             details = "not retriable"
             raise ValueError(details)
 
         with pytest.raises(ValueError):
-            raises_value_error()
+            await raises_value_error()
         assert call_count == 1

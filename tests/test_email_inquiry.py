@@ -2,8 +2,9 @@
 
 """Tests for email inquiry service functions."""
 
+from asyncio import run as async_run
 from datetime import datetime
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from openai_client.schemas.ai import (
     AnalysisFormat,
@@ -141,6 +142,12 @@ class TestConfirmationMessagePrompt:
         assert "technical issue" in result
 
 
+def _make_async_mock(return_value: str | None) -> AsyncMock:
+    async_m = AsyncMock()
+    async_m.return_value = return_value
+    return async_m
+
+
 class TestAnalyzeContact:
     def test_successful_analysis(self) -> None:
         inquiry = EmailInquiry(
@@ -155,12 +162,12 @@ class TestAnalyzeContact:
         with patch(
             "openai_client.services.email_inquiry.caller",
             return_value={
-                "completion": lambda: (
-                    '{"name":"John","summary":"Booking request","category":"Booking Inquiry","urgency":"Medium","suggested_reply":"Hello","required_action":"Book it","keywords":["bali"]}'
+                "completion": _make_async_mock(
+                    '{"name":"John","summary":"Booking request","category":"Booking Inquiry","urgency":"Medium","suggested_reply":"Hello","required_action":"Book it","keywords":["bali"]}',
                 ),
             },
         ):
-            result = analyze_contact(inquiry, mock_client, "completion")
+            result = async_run(analyze_contact(inquiry, mock_client, "completion"))
             assert "John" in result
             assert "Booking request" in result
             assert "Booking Inquiry" in result
@@ -177,9 +184,9 @@ class TestAnalyzeContact:
 
         with patch(
             "openai_client.services.email_inquiry.caller",
-            return_value={"completion": lambda: "not valid json"},
+            return_value={"completion": _make_async_mock("not valid json")},
         ):
-            result = analyze_contact(inquiry, mock_client, "completion")
+            result = async_run(analyze_contact(inquiry, mock_client, "completion"))
             assert "Jane" in result
             assert "General Information" in result
 
@@ -195,9 +202,9 @@ class TestAnalyzeContact:
 
         with patch(
             "openai_client.services.email_inquiry.caller",
-            return_value={"completion": lambda: '{"summary":"test"}'},
+            return_value={"completion": _make_async_mock('{"summary":"test"}')},
         ):
-            result = analyze_contact(inquiry, mock_client, "completion")
+            result = async_run(analyze_contact(inquiry, mock_client, "completion"))
             assert "Test" in result
 
 
@@ -214,9 +221,9 @@ class TestConfirmationMessage:
 
         with patch(
             "openai_client.services.email_inquiry.caller",
-            return_value={"completion": lambda: "Thank you for your inquiry."},
+            return_value={"completion": _make_async_mock("Thank you for your inquiry.")},
         ):
-            result = confirmation_message(inquiry, mock_client, "completion")
+            result = async_run(confirmation_message(inquiry, mock_client, "completion"))
             assert isinstance(result, ContactAnalysisResponse)
             assert result.confirmation == "Thank you for your inquiry."
 
@@ -232,9 +239,9 @@ class TestConfirmationMessage:
 
         with patch(
             "openai_client.services.email_inquiry.caller",
-            return_value={"completion": lambda: None},
+            return_value={"completion": _make_async_mock(None)},
         ):
-            result = confirmation_message(inquiry, mock_client, "completion")
+            result = async_run(confirmation_message(inquiry, mock_client, "completion"))
             assert isinstance(result, ContactAnalysisResponse)
             assert "Jane" in result.confirmation
 
@@ -250,7 +257,9 @@ class TestConfirmationMessage:
 
         with patch(
             "openai_client.services.email_inquiry.caller",
-            return_value={"completion": lambda: None},
+            return_value={"completion": _make_async_mock(None)},
         ):
-            result = confirmation_message(inquiry, mock_client, "completion", sent=False)
+            result = async_run(
+                confirmation_message(inquiry, mock_client, "completion", sent=False),
+            )
             assert "failed to send" in result.confirmation

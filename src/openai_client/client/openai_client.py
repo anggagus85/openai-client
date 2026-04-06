@@ -1,11 +1,11 @@
-from collections.abc import Generator
+from asyncio import to_thread
 from json import dumps, loads
 from logging import getLogger
 from pathlib import Path
 
 from bytez import Bytez
 from bytez.client import Response
-from openai import OpenAI, Stream
+from openai import AsyncOpenAI, AsyncStream
 from openai.types.chat import ChatCompletion
 from openai.types.chat.chat_completion_chunk import ChatCompletionChunk
 from rich.pretty import pprint
@@ -19,7 +19,7 @@ from openai_client.utils import save_to_file
 logger = getLogger(__name__)
 
 
-class OpenAiClient(OpenAI):
+class OpenAiClient(AsyncOpenAI):
     def __init__(self, api_key: str, base_url: str, model: str, timeout: float = 60.0) -> None:
         super().__init__(api_key=api_key, base_url=base_url, timeout=timeout)
         self.model = model
@@ -32,18 +32,13 @@ class OpenAiClient(OpenAI):
         max_delay=settings.AI_RETRY_DELAY * (settings.AI_BACKOFF_FACTOR**settings.AI_MAX_RETRIES),
         exec_retry=API_EXCEPTIONS,
     )
-    def completion(
+    async def completion(
         self,
         messages: ListParams,
         *,
         stream: bool = False,
-    ) -> ChatCompletion | Stream[ChatCompletionChunk]:
-        """
-        Support multi-turn conversations.
-
-        Each time the chat function is called to converse with the large language model, it has access to the previous conversation history. In other words, the large language model has a memory.
-        """
-        return self.chat.completions.create(
+    ) -> ChatCompletion | AsyncStream[ChatCompletionChunk]:
+        return await self.chat.completions.create(
             messages=messages,
             **self._configs,
             stream=stream,
@@ -55,17 +50,28 @@ class OpenAiClient(OpenAI):
         max_delay=settings.AI_RETRY_DELAY * (settings.AI_BACKOFF_FACTOR**settings.AI_MAX_RETRIES),
         exec_retry=API_EXCEPTIONS,
     )
-    def bytez(self, messages: ListParams) -> Generator | Response:
+    async def bytez(self, messages: ListParams) -> Response:
+        return await to_thread(self._sync_bytez_call, messages)
+
+    def _sync_bytez_call(self, messages: ListParams) -> Response:
         bytez_model = Bytez(self.api_key).model(self.model)
         bytez_params = {"temperature": 0.3}
-        return bytez_model.run(messages, bytez_params)
+        result = bytez_model.run(messages, bytez_params)
+        assert isinstance(result, Response), f"Expected Response, got {type(result)}"
+        return result
 
-    def list_models(self, provider: str) -> None:
+    async def list_models(self, provider: str) -> None:
         if provider == "bytez":
-            pprint(Bytez(self.api_key).list.models(options={"task": "chat", "modelId": "Qwen3-4B"}))
+            pprint(
+                await to_thread(
+                    lambda: Bytez(self.api_key).list.models(
+                        options={"task": "chat", "modelId": "Qwen3-4B"},
+                    ),
+                ),
+            )
             return
 
-        model_list = self.models.list()
+        model_list = await self.models.list()
         model_data = model_list.data
 
         free = [
@@ -73,9 +79,9 @@ class OpenAiClient(OpenAI):
             for model in model_data
             if ":free" in model.id and not any(x in model.id for x in ["-coder", "-it"])
         ]
-        models = loads(Path("models.json").read_text())
+        models = loads(await to_thread(lambda: Path("models.json").read_text()))
         models[provider] = free
-        save_to_file(dumps(models, indent=4), Path("models.json"))
+        await to_thread(save_to_file, dumps(models, indent=4), Path("models.json"))
 
     def __str__(self) -> str:
         return f"model '{self.model}' via {self.base_url}"

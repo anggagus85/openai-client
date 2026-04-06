@@ -75,26 +75,13 @@ def _email_messages(content: str) -> ListParams:
     ]
 
 
-def analyze_contact(email_inquiry: EmailInquiry, client: OpenAiClient, method: str) -> str:
-    """
-    Analyze contact inquiry using the configured AI backend.
-
-    Args:
-        email_inquiry: The contact inquiry request containing name, email, and message.
-        client: The AI client instance.
-        method: The method to use for analysis.
-
-    Returns:
-        AI-generated analysis of the contact inquiry.
-
-    """
-
+async def analyze_contact(email_inquiry: EmailInquiry, client: OpenAiClient, method: str) -> str:
     messages = _email_messages(
         _contact_analysis_prompt(email_inquiry.name, email_inquiry.message),
     )
 
     logger.info("Analyzing email inquiry with %s", client)
-    response = caller(client, messages, append=False)[method]()
+    response = await caller(client, messages, append=False)[method]()
     try:
         response_dict = loads(response) if isinstance(response, str) else response
         analysis = AnalysisFormat.model_validate(response_dict)
@@ -333,29 +320,17 @@ def _create_body(request: EmailInquiry, analysis: AnalysisFormat) -> str:
 """
 
 
-def confirmation_message(
+async def confirmation_message(
     request: EmailInquiry,
     ai_client: OpenAiClient,
     method: str,
     *,
     sent: bool = True,
 ) -> ContactAnalysisResponse:
-    """
-    Create a confirmation message for the contact inquiry.
-
-    Args:
-        request: The contact inquiry request containing name, email, and message.
-        ai_client: The AI client instance.
-        method: The method to use for the AI client.
-        sent: Whether the email was sent successfully.
-
-    Returns:
-        A confirmation message for the contact inquiry.
-    """
     messages = _email_messages(_confirmation_message_prompt(request, sent=sent))
 
     logger.info("Generating confirmation message...")
-    response = caller(ai_client, messages, append=False)[method]()
+    response = await caller(ai_client, messages, append=False)[method]()
     data = {"confirmation": response}
     try:
         return ContactAnalysisResponse.model_validate(data)

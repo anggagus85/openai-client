@@ -3,10 +3,11 @@
 """Advanced tests for itinerary service - itinerary(), _generate_and_save()."""
 
 import tempfile
+from asyncio import run as async_run
 from collections.abc import Generator
 from contextlib import contextmanager
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -37,9 +38,10 @@ def itinerary_request() -> ItineraryRequestMD:
 
 @contextmanager
 def mock_itinerary_caller(content: str) -> Generator[MagicMock]:
+    mock_caller = AsyncMock(return_value=content)
     with patch(
         "openai_client.services.itinerary.caller",
-        return_value={"completion": lambda: content},
+        return_value={"completion": mock_caller},
     ) as mock:
         yield mock
 
@@ -47,7 +49,15 @@ def mock_itinerary_caller(content: str) -> Generator[MagicMock]:
 @contextmanager
 def mock_web_search(results: str = "") -> Generator[MagicMock]:
     mock = MagicMock()
-    mock.search.return_value = results
+    call_tracker = MagicMock()
+
+    async def _side_effect(*_args: object, **_kwargs: object) -> str | None:
+        call_tracker(*_args, **_kwargs)
+        return results if results else None
+
+    mock_search = AsyncMock(side_effect=_side_effect)
+    mock.search = mock_search
+    mock.call_tracker = call_tracker
     with patch("openai_client.services.itinerary.WebSearch", return_value=mock):
         yield mock
 
@@ -73,7 +83,7 @@ class TestGenerateAndSave:
             },
         ]
         with temp_cwd(), mock_itinerary_caller("# Test Itinerary\n\nDay 1: Beach"):
-            _generate_and_save(messages, mock_client, "completion")
+            async_run(_generate_and_save(messages, mock_client, "completion"))
 
             md_path = Path.cwd() / "itinerary.md"
             txt_path = Path.cwd() / "itinerary.txt"
@@ -93,9 +103,9 @@ class TestItinerary:
             mock_itinerary_caller("# Generated Itinerary"),
             temp_cwd(),
         ):
-            itinerary(itinerary_request, mock_client, "completion")
+            async_run(itinerary(itinerary_request, mock_client, "completion"))
 
-        mock_search.search.assert_called_once()
+        mock_search.call_tracker.assert_called_once()
 
     def test_falls_back_when_search_fails(
         self,
@@ -107,7 +117,7 @@ class TestItinerary:
             mock_itinerary_caller("# Fallback Itinerary"),
             temp_cwd() as cwd,
         ):
-            itinerary(itinerary_request, mock_client, "completion")
+            async_run(itinerary(itinerary_request, mock_client, "completion"))
 
             md_path = cwd / "itinerary.md"
             txt_path = cwd / "itinerary.txt"
@@ -125,7 +135,7 @@ class TestItinerary:
             mock_itinerary_caller(""),
             temp_cwd() as cwd,
         ):
-            itinerary(itinerary_request, mock_client, "completion")
+            async_run(itinerary(itinerary_request, mock_client, "completion"))
 
             md_path = cwd / "itinerary.md"
             assert not md_path.exists()

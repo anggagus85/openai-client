@@ -49,12 +49,12 @@ class TestCleanupAnswer:
 
 
 class TestHandleApiCall:
-    def test_yields_success(self) -> None:
-        with _handle_api_call() as result:
+    async def test_yields_success(self) -> None:
+        async with _handle_api_call() as result:
             pass
         assert result is None
 
-    def test_raises_api_error_on_api_exception(self) -> None:
+    async def test_raises_api_error_on_api_exception(self) -> None:
 
         standard_exceptions = (
             AuthenticationError,
@@ -67,20 +67,24 @@ class TestHandleApiCall:
         )
 
         for exc_type in standard_exceptions:
-            with pytest.raises(ApiError), _handle_api_call():
-                raise exc_type("test", response=MagicMock(), body={"error": "test"})
+            with pytest.raises(ApiError):
+                async with _handle_api_call():
+                    raise exc_type("test", response=MagicMock(), body={"error": "test"})
 
-    def test_raises_api_error_on_rate_limit(self) -> None:
-        with pytest.raises(ApiError), _handle_api_call():
-            details = "rate limited"
-            raise RateLimitError(details, response=MagicMock(), body=None)
+    async def test_raises_api_error_on_rate_limit(self) -> None:
+        with pytest.raises(ApiError):
+            async with _handle_api_call():
+                details = "rate limited"
+                raise RateLimitError(details, response=MagicMock(), body=None)
 
-    def test_raises_app_system_error_on_system_exception(self) -> None:
+    async def test_raises_app_system_error_on_system_exception(self) -> None:
         for exc_type in SYSTEM_EXCEPTIONS:
-            with pytest.raises(AppSystemError), _handle_api_call():
-                details = "system error"
-                raise exc_type(details)
+            with pytest.raises(AppSystemError):
+                async with _handle_api_call():
+                    details = "system error"
+                    raise exc_type(details)
 
-    def test_raises_unknown_error_on_other_exception(self) -> None:
-        with pytest.raises(UnknownError), _handle_api_call():
-            raise RuntimeError("unexpected")
+    async def test_raises_unknown_error_on_other_exception(self) -> None:
+        with pytest.raises(UnknownError):
+            async with _handle_api_call():
+                raise RuntimeError("unexpected")

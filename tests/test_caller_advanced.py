@@ -2,7 +2,8 @@
 
 """Advanced tests for caller module - _call_completion, _call_bytez, _iter_chunk, _stream_chunk, _append_assistant_message."""
 
-from unittest.mock import MagicMock
+from collections.abc import AsyncIterator
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from bytez.client import Response
@@ -18,8 +19,8 @@ from openai_client.services.caller.caller import (
 
 
 class TestCallCompletion:
-    def test_returns_answer(self) -> None:
-        mock_client = MagicMock()
+    async def test_returns_answer(self) -> None:
+        mock_client = AsyncMock()
         mock_client.model = "test-model"
         mock_client.base_url = "https://api.example.com"
         mock_completion = MagicMock()
@@ -28,11 +29,11 @@ class TestCallCompletion:
         mock_client.completion.return_value = mock_completion
 
         messages: list = []
-        result = _call_completion(mock_client, messages, append=False)
+        result = await _call_completion(mock_client, messages, append=False)
         assert result == "Hello, world!"
 
-    def test_returns_empty_on_no_choices(self) -> None:
-        mock_client = MagicMock()
+    async def test_returns_empty_on_no_choices(self) -> None:
+        mock_client = AsyncMock()
         mock_client.model = "test-model"
         mock_client.base_url = "https://api.example.com"
         mock_completion = MagicMock()
@@ -40,11 +41,11 @@ class TestCallCompletion:
         mock_client.completion.return_value = mock_completion
 
         messages: list = []
-        result = _call_completion(mock_client, messages, append=False)
+        result = await _call_completion(mock_client, messages, append=False)
         assert result == ""
 
-    def test_appends_assistant_message(self) -> None:
-        mock_client = MagicMock()
+    async def test_appends_assistant_message(self) -> None:
+        mock_client = AsyncMock()
         mock_client.model = "test-model"
         mock_client.base_url = "https://api.example.com"
         mock_completion = MagicMock()
@@ -53,13 +54,13 @@ class TestCallCompletion:
         mock_client.completion.return_value = mock_completion
 
         messages: list = []
-        _call_completion(mock_client, messages, append=True)
+        await _call_completion(mock_client, messages, append=True)
         assert len(messages) == 1
         assert messages[0]["role"] == "assistant"
         assert messages[0]["content"] == "Answer"
 
-    def test_cleans_up_faq_tag(self) -> None:
-        mock_client = MagicMock()
+    async def test_cleans_up_faq_tag(self) -> None:
+        mock_client = AsyncMock()
         mock_client.model = "test-model"
         mock_client.base_url = "https://api.example.com"
         mock_completion = MagicMock()
@@ -68,11 +69,11 @@ class TestCallCompletion:
         mock_client.completion.return_value = mock_completion
 
         messages: list = []
-        result = _call_completion(mock_client, messages, append=False)
+        result = await _call_completion(mock_client, messages, append=False)
         assert result == "actual answer"
 
-    def test_returns_empty_on_none_content(self) -> None:
-        mock_client = MagicMock()
+    async def test_returns_empty_on_none_content(self) -> None:
+        mock_client = AsyncMock()
         mock_client.model = "test-model"
         mock_client.base_url = "https://api.example.com"
         mock_completion = MagicMock()
@@ -81,13 +82,13 @@ class TestCallCompletion:
         mock_client.completion.return_value = mock_completion
 
         messages: list = []
-        result = _call_completion(mock_client, messages, append=False)
+        result = await _call_completion(mock_client, messages, append=False)
         assert result is None
 
 
 class TestCallBytez:
-    def test_returns_answer(self) -> None:
-        mock_client = MagicMock()
+    async def test_returns_answer(self) -> None:
+        mock_client = AsyncMock()
         mock_client.model = "test-model"
         mock_client.base_url = "https://api.example.com"
         mock_response = MagicMock(spec=Response)
@@ -96,22 +97,22 @@ class TestCallBytez:
         mock_client.bytez.return_value = mock_response
 
         messages: list = []
-        result = _call_bytez(mock_client, messages, append=False)
+        result = await _call_bytez(mock_client, messages, append=False)
         assert result == "Bytez answer"
 
-    def test_invalid_response_type_raises(self) -> None:
-        mock_client = MagicMock()
+    async def test_invalid_response_type_raises(self) -> None:
+        mock_client = AsyncMock()
         mock_client.model = "test-model"
         mock_client.base_url = "https://api.example.com"
         mock_client.bytez.return_value = "not a response"
 
         messages: list = []
         with pytest.raises(AppSystemError, match="Invalid response type"):
-            _call_bytez(mock_client, messages, append=False)
+            await _call_bytez(mock_client, messages, append=False)
 
-    def test_error_response_raises(self) -> None:
+    async def test_error_response_raises(self) -> None:
 
-        mock_client = MagicMock()
+        mock_client = AsyncMock()
         mock_client.model = "test-model"
         mock_client.base_url = "https://api.example.com"
         mock_response = MagicMock(spec=Response)
@@ -121,10 +122,10 @@ class TestCallBytez:
 
         messages: list = []
         with pytest.raises(ApiError, match="API error"):
-            _call_bytez(mock_client, messages, append=False)
+            await _call_bytez(mock_client, messages, append=False)
 
-    def test_invalid_output_type_raises(self) -> None:
-        mock_client = MagicMock()
+    async def test_invalid_output_type_raises(self) -> None:
+        mock_client = AsyncMock()
         mock_client.model = "test-model"
         mock_client.base_url = "https://api.example.com"
         mock_response = MagicMock(spec=Response)
@@ -134,10 +135,10 @@ class TestCallBytez:
 
         messages: list = []
         with pytest.raises(AppSystemError, match="Invalid output type"):
-            _call_bytez(mock_client, messages, append=False)
+            await _call_bytez(mock_client, messages, append=False)
 
-    def test_missing_content_key_raises(self) -> None:
-        mock_client = MagicMock()
+    async def test_missing_content_key_raises(self) -> None:
+        mock_client = AsyncMock()
         mock_client.model = "test-model"
         mock_client.base_url = "https://api.example.com"
         mock_response = MagicMock(spec=Response)
@@ -147,10 +148,10 @@ class TestCallBytez:
 
         messages: list = []
         with pytest.raises(AppSystemError, match="missing 'content' key"):
-            _call_bytez(mock_client, messages, append=False)
+            await _call_bytez(mock_client, messages, append=False)
 
-    def test_appends_assistant_message(self) -> None:
-        mock_client = MagicMock()
+    async def test_appends_assistant_message(self) -> None:
+        mock_client = AsyncMock()
         mock_client.model = "test-model"
         mock_client.base_url = "https://api.example.com"
         mock_response = MagicMock(spec=Response)
@@ -159,12 +160,12 @@ class TestCallBytez:
         mock_client.bytez.return_value = mock_response
 
         messages: list = []
-        _call_bytez(mock_client, messages, append=True)
+        await _call_bytez(mock_client, messages, append=True)
         assert len(messages) == 1
         assert messages[0]["role"] == "assistant"
 
-    def test_cleans_up_faq_tag(self) -> None:
-        mock_client = MagicMock()
+    async def test_cleans_up_faq_tag(self) -> None:
+        mock_client = AsyncMock()
         mock_client.model = "test-model"
         mock_client.base_url = "https://api.example.com"
         mock_response = MagicMock(spec=Response)
@@ -173,41 +174,55 @@ class TestCallBytez:
         mock_client.bytez.return_value = mock_response
 
         messages: list = []
-        result = _call_bytez(mock_client, messages, append=False)
+        result = await _call_bytez(mock_client, messages, append=False)
         assert result == "bytez answer"
 
 
 class TestIterChunk:
-    def test_prints_non_bytez_tokens(self, capsys: pytest.CaptureFixture[str]) -> None:
-        chunks = iter(["Hello", " ", "World"])
-        _iter_chunk(chunks, is_bytez=False)
+    async def test_prints_non_bytez_tokens(self, capsys: pytest.CaptureFixture[str]) -> None:
+        async def gen() -> AsyncIterator[str | None]:
+            for token in ["Hello", " ", "World"]:
+                yield token
+
+        await _iter_chunk(gen(), is_bytez=False)
         captured = capsys.readouterr()
         assert "Hello World" in captured.out
 
-    def test_returns_on_none_token(self, capsys: pytest.CaptureFixture[str]) -> None:
-        chunks = iter(["Hello", None, "World"])
-        _iter_chunk(chunks, is_bytez=False)
+    async def test_returns_on_none_token(self, capsys: pytest.CaptureFixture[str]) -> None:
+        async def gen() -> AsyncIterator[str | None]:
+            for token in ["Hello", None, "World"]:
+                yield token
+
+        await _iter_chunk(gen(), is_bytez=False)
         captured = capsys.readouterr()
         assert "Hello" in captured.out
         assert "World" not in captured.out
 
-    def test_skips_faq_prefix_for_bytez(self, capsys: pytest.CaptureFixture[str]) -> None:
-        chunks = iter(["<think> reasoning </think> answer"])
-        _iter_chunk(chunks, is_bytez=True)
+    async def test_skips_faq_prefix_for_bytez(self, capsys: pytest.CaptureFixture[str]) -> None:
+        async def gen() -> AsyncIterator[str | None]:
+            yield "<think> reasoning </think> answer"
+
+        await _iter_chunk(gen(), is_bytez=True)
         captured = capsys.readouterr()
         assert "answer" in captured.out
         assert "reasoning" not in captured.out
 
-    def test_skips_leading_whitespace_after_faq(self, capsys: pytest.CaptureFixture[str]) -> None:
-        chunks = iter(["<think> reasoning </think>", "\n\n", "  ", "actual answer"])
-        _iter_chunk(chunks, is_bytez=True)
+    async def test_skips_leading_whitespace_after_faq(
+        self,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        async def gen() -> AsyncIterator[str | None]:
+            for token in ["<think> reasoning </think>", "\n\n", "  ", "actual answer"]:
+                yield token
+
+        await _iter_chunk(gen(), is_bytez=True)
         captured = capsys.readouterr()
         assert "actual answer" in captured.out
 
 
 class TestStreamChunk:
-    def test_yields_content(self) -> None:
-        mock_client = MagicMock()
+    async def test_yields_content(self) -> None:
+        mock_client = AsyncMock()
         mock_client.model = "test-model"
         mock_client.base_url = "https://api.example.com"
 
@@ -221,15 +236,18 @@ class TestStreamChunk:
         mock_chunk2.choices[0].delta.content = " World"
         mock_chunk2.choices[0].finish_reason = None
 
-        mock_stream = iter([mock_chunk1, mock_chunk2])
-        mock_client.completion.return_value = mock_stream
+        async def mock_stream() -> AsyncIterator:
+            for chunk in [mock_chunk1, mock_chunk2]:
+                yield chunk
+
+        mock_client.completion.return_value = mock_stream()
 
         messages: list = []
-        results = list(_stream_chunk(mock_client, messages))
+        results = [x async for x in _stream_chunk(mock_client, messages)]
         assert results == ["Hello", " World"]
 
-    def test_appends_accumulated_message(self) -> None:
-        mock_client = MagicMock()
+    async def test_appends_accumulated_message(self) -> None:
+        mock_client = AsyncMock()
         mock_client.model = "test-model"
         mock_client.base_url = "https://api.example.com"
 
@@ -238,26 +256,34 @@ class TestStreamChunk:
         mock_chunk.choices[0].delta.content = "Content"
         mock_chunk.choices[0].finish_reason = None
 
-        mock_stream = iter([mock_chunk])
-        mock_client.completion.return_value = mock_stream
+        async def mock_stream() -> AsyncIterator:
+            yield mock_chunk
+
+        mock_client.completion.return_value = mock_stream()
 
         messages: list = []
-        list(_stream_chunk(mock_client, messages))
+        async for _ in _stream_chunk(mock_client, messages):
+            pass
         assert len(messages) == 1
         assert messages[0]["role"] == "assistant"
 
-    def test_yields_none_on_empty_stream(self) -> None:
-        mock_client = MagicMock()
+    async def test_yields_none_on_empty_stream(self) -> None:
+        mock_client = AsyncMock()
         mock_client.model = "test-model"
         mock_client.base_url = "https://api.example.com"
-        mock_client.completion.return_value = iter([])
+
+        async def mock_stream() -> AsyncIterator:
+            return
+            yield
+
+        mock_client.completion.return_value = mock_stream()
 
         messages: list = []
-        results = list(_stream_chunk(mock_client, messages))
+        results = [x async for x in _stream_chunk(mock_client, messages)]
         assert results == [None]
 
-    def test_stops_on_finish_reason(self) -> None:
-        mock_client = MagicMock()
+    async def test_stops_on_finish_reason(self) -> None:
+        mock_client = AsyncMock()
         mock_client.model = "test-model"
         mock_client.base_url = "https://api.example.com"
 
@@ -271,26 +297,29 @@ class TestStreamChunk:
         mock_chunk2.choices[0].delta.content = "World"
         mock_chunk2.choices[0].finish_reason = "stop"
 
-        mock_stream = iter([mock_chunk1, mock_chunk2])
-        mock_client.completion.return_value = mock_stream
+        async def mock_stream() -> AsyncIterator:
+            for chunk in [mock_chunk1, mock_chunk2]:
+                yield chunk
+
+        mock_client.completion.return_value = mock_stream()
 
         messages: list = []
-        results = list(_stream_chunk(mock_client, messages))
+        results = [x async for x in _stream_chunk(mock_client, messages)]
         assert results == ["Hello"]
 
 
 class TestAppendAssistantMessage:
-    def test_appends_to_messages_list(self) -> None:
+    async def test_appends_to_messages_list(self) -> None:
         messages: list = []
-        _append_assistant_message(messages, "Test content")
+        await _append_assistant_message(messages, "Test content")
         assert len(messages) == 1
         assert messages[0]["role"] == "assistant"
         assert messages[0]["content"] == "Test content"
 
-    def test_appends_multiple(self) -> None:
+    async def test_appends_multiple(self) -> None:
         messages: list = []
-        _append_assistant_message(messages, "First")
-        _append_assistant_message(messages, "Second")
+        await _append_assistant_message(messages, "First")
+        await _append_assistant_message(messages, "Second")
         assert len(messages) == 2
         assert messages[0]["content"] == "First"
         assert messages[1]["content"] == "Second"

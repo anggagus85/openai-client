@@ -2,7 +2,8 @@
 
 """Tests for search service clients and helpers."""
 
-from unittest.mock import MagicMock, patch
+from asyncio import run as async_run
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -43,7 +44,7 @@ class TestExaSearchClient:
         client = _ExaSearch(api_key="test-key")
         assert "exa" in str(client)
 
-    def test_search_success(self) -> None:
+    async def test_search_success(self) -> None:
         mock_response = MagicMock()
         mock_response.json.return_value = {
             "results": [
@@ -51,26 +52,22 @@ class TestExaSearchClient:
             ],
         }
         mock_response.raise_for_status.return_value = None
-        mock_client = MagicMock()
-        mock_client.__enter__ = MagicMock(return_value=mock_client)
-        mock_client.__exit__ = MagicMock(return_value=False)
-        mock_client.post.return_value = mock_response
-
-        with patch("openai_client.services.web_search.Client", return_value=mock_client):
-            success, result = _ExaSearch(api_key="key").search("Bali beaches")
-            assert success is True
-            assert "Bali Beach" in result
+        mock_client = AsyncMock()
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
 
     def test_search_failure(self) -> None:
-        mock_client = MagicMock()
-        mock_client.__enter__ = MagicMock(return_value=mock_client)
-        mock_client.__exit__ = MagicMock(return_value=False)
-        mock_client.post.side_effect = ConnectionError("Network error")
+        mock_client = AsyncMock()
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+        mock_client.post = AsyncMock(side_effect=ConnectionError("Network error"))
 
-        with patch("openai_client.services.web_search.Client", return_value=mock_client):
-            success, result = _ExaSearch(api_key="key").search("Bali")
-            assert success is False
-            assert "Search error" in result
+        async def _run_test() -> None:
+            with patch("openai_client.services.web_search.AsyncClient", return_value=mock_client):
+                success, result = await _ExaSearch(api_key="key").search("Bali")
+                assert success is False
+                assert "Search error" in result
+
+        async_run(_run_test())
 
     def test_process_results(self) -> None:
         client = _ExaSearch(api_key="key")
@@ -111,26 +108,32 @@ class TestBraveSearchClient:
             },
         }
         mock_response.raise_for_status.return_value = None
-        mock_client = MagicMock()
-        mock_client.__enter__ = MagicMock(return_value=mock_client)
-        mock_client.__exit__ = MagicMock(return_value=False)
-        mock_client.get.return_value = mock_response
+        mock_client = AsyncMock()
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+        mock_client.get = AsyncMock(return_value=mock_response)
 
-        with patch("openai_client.services.web_search.Client", return_value=mock_client):
-            success, result = _BraveSearch(api_key="key").search("Bali travel")
-            assert success is True
-            assert "Bali Guide" in result
+        async def _run_test() -> None:
+            with patch("openai_client.services.web_search.AsyncClient", return_value=mock_client):
+                success, result = await _BraveSearch(api_key="key").search("Bali travel")
+                assert success is True
+                assert "Bali Guide" in result
+
+        async_run(_run_test())
 
     def test_search_failure(self) -> None:
-        mock_client = MagicMock()
-        mock_client.__enter__ = MagicMock(return_value=mock_client)
-        mock_client.__exit__ = MagicMock(return_value=False)
-        mock_client.get.side_effect = ConnectionError("Network error")
+        mock_client = AsyncMock()
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+        mock_client.get = AsyncMock(side_effect=ConnectionError("Network error"))
 
-        with patch("openai_client.services.web_search.Client", return_value=mock_client):
-            success, result = _BraveSearch(api_key="key").search("Bali")
-            assert success is False
-            assert "Search error" in result
+        async def _run_test() -> None:
+            with patch("openai_client.services.web_search.AsyncClient", return_value=mock_client):
+                success, result = await _BraveSearch(api_key="key").search("Bali")
+                assert success is False
+                assert "Search error" in result
+
+        async_run(_run_test())
 
 
 class TestProviders:

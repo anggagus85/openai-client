@@ -3,7 +3,7 @@
 from logging import getLogger
 from typing import Any
 
-from httpx import Client
+from httpx import AsyncClient
 
 from openai_client.configs import settings
 
@@ -19,7 +19,7 @@ class _ExaSearch:
         self.api_key = api_key
         self.base_url = "https://api.exa.ai/search"
 
-    def search(self, query: str, configs: dict[str, Any] | None = None) -> tuple[bool, str]:
+    async def search(self, query: str, configs: dict[str, Any] | None = None) -> tuple[bool, str]:
         headers = {
             "x-api-key": self.api_key,
             "Content-Type": "application/json",
@@ -30,8 +30,8 @@ class _ExaSearch:
         payload = {"query": query, "numResults": num_results, "contents": contents, "type": "auto"}
 
         try:
-            with Client(timeout=30.0) as client:
-                response = client.post(self.base_url, json=payload, headers=headers)
+            async with AsyncClient(timeout=30.0) as client:
+                response = await client.post(self.base_url, json=payload, headers=headers)
                 response.raise_for_status()
                 data = response.json()
 
@@ -59,7 +59,7 @@ class _BraveSearch:
         self.api_key = api_key
         self.base_url = "https://api.search.brave.com/res/v1/web/search"
 
-    def search(self, query: str, configs: dict[str, Any] | None = None) -> tuple[bool, str]:
+    async def search(self, query: str, configs: dict[str, Any] | None = None) -> tuple[bool, str]:
         headers = {
             "Accept": "application/json",
             "Accept-Encoding": "gzip",
@@ -69,8 +69,8 @@ class _BraveSearch:
         params = {"q": query, "count": count}
 
         try:
-            with Client(timeout=30.0) as client:
-                response = client.get(self.base_url, params=params, headers=headers)
+            async with AsyncClient(timeout=30.0) as client:
+                response = await client.get(self.base_url, params=params, headers=headers)
                 response.raise_for_status()
                 data = response.json()
 
@@ -91,37 +91,15 @@ class _BraveSearch:
 
 
 class WebSearch:
-    """
-    Unified search interface.
-
-    Handles provider iteration and fallback. Iterates through configured
-    search providers in order, returning the first successful result.  Logs
-    failures automatically and returns ``None`` when all providers fail.
-    """
-
     def __init__(self, operation: str, configs: dict[str, Any] | None = None) -> None:
         self._providers = _providers()
         self._operation = operation
         self._configs = configs
 
-    def search(self, query: str) -> str | None:
-        """
-        Execute search across providers.
-
-        Automatically falls back to the next provider on failure.
-
-        Args:
-            query: The search query string.
-            configs: Provider-specific parameters (e.g., ``num_results``,
-                ``contents`` for Exa; ``count`` for Brave).  Each provider
-                ignores configs it does not use.
-
-        Returns:
-            Formatted search results string, or ``None`` if all providers fail.
-        """
+    async def search(self, query: str) -> str | None:
         for provider in self._providers:
             logger.info("%s %s", self._operation, provider)
-            success, results = provider.search(query, self._configs)
+            success, results = await provider.search(query, self._configs)
 
             if success:
                 logger.info("Search succeeded with %s", provider)
