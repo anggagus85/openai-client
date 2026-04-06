@@ -6,14 +6,13 @@ from pathlib import Path
 from re import compile as re_compile
 
 from mdformat import text as mdformat_text
-from openai.types.chat import ChatCompletionSystemMessageParam, ChatCompletionUserMessageParam
 
-from openai_client.client import OpenAiClient
+from openai_client.client import OpenAI
 from openai_client.configs import WHATSAPP_NUMBER
 from openai_client.schemas.ai import ItineraryRequestMD
 from openai_client.services.caller import caller
 from openai_client.services.web_search import WebSearch
-from openai_client.types import ListParams
+from openai_client.types import ListParams, SystemParam, UserParam
 from openai_client.utils import save_to_file
 
 logger = getLogger(__name__)
@@ -425,11 +424,11 @@ def _markdown_to_whatsapp(md_text: str) -> str:
 
 def _itinerary_messages(itinerary_req: ItineraryRequestMD) -> ListParams:
     return [
-        ChatCompletionSystemMessageParam(
+        SystemParam(
             role="system",
             content="You are an expert travel planner specializing in authentic Bali experiences.",
         ),
-        ChatCompletionUserMessageParam(
+        UserParam(
             role="user",
             content=_prompt(itinerary_req),
         ),
@@ -438,7 +437,7 @@ def _itinerary_messages(itinerary_req: ItineraryRequestMD) -> ListParams:
 
 async def _plain_itinerary(
     itinerary_req: ItineraryRequestMD,
-    client: OpenAiClient,
+    client: OpenAI,
     method: str,
 ) -> None:
     logger.info("Generating itinerary with %s", client)
@@ -463,11 +462,11 @@ def _itinerary_search_messages(
     prompt = _prompt(itinerary_req, search_context=search_context)
 
     return [
-        ChatCompletionSystemMessageParam(
+        SystemParam(
             role="system",
             content="You are an expert travel planner specializing in authentic Bali experiences. Use the latest search results to provide current, accurate information.",
         ),
-        ChatCompletionUserMessageParam(
+        UserParam(
             role="user",
             content=prompt,
         ),
@@ -486,7 +485,7 @@ def _search_bali_info(itinerary_req: ItineraryRequestMD) -> str:
     )
 
 
-async def itinerary(itinerary_req: ItineraryRequestMD, client: OpenAiClient, method: str) -> None:
+async def itinerary(itinerary_req: ItineraryRequestMD, client: OpenAI, method: str) -> None:
     web_search = WebSearch("Searching latest Bali itinerary information with")
 
     if not (results := await web_search.search(_search_bali_info(itinerary_req))):
@@ -500,7 +499,7 @@ async def itinerary(itinerary_req: ItineraryRequestMD, client: OpenAiClient, met
     await _generate_and_save(messages, client, method)
 
 
-async def _generate_and_save(messages: ListParams, client: OpenAiClient, method: str) -> None:
+async def _generate_and_save(messages: ListParams, client: OpenAI, method: str) -> None:
     if not (content := await caller(client, messages, append=False)[method]()):
         logger.warning("No itinerary content returned from OpenAI method %s", method)
         return

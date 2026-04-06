@@ -5,14 +5,10 @@ from typing import cast
 
 from bytez.client import Response
 from openai import AsyncStream, RateLimitError
-from openai.types.chat import (
-    ChatCompletion,
-    ChatCompletionAssistantMessageParam,
-    ChatCompletionChunk,
-)
+from openai.types.chat import ChatCompletion, ChatCompletionChunk
 from rich import print as rprint
 
-from openai_client.client import OpenAiClient
+from openai_client.client import OpenAI
 from openai_client.errors import (
     API_EXCEPTIONS,
     SYSTEM_EXCEPTIONS,
@@ -21,7 +17,7 @@ from openai_client.errors import (
     UnknownError,
 )
 from openai_client.schemas.ai import OpenAIChatMessage
-from openai_client.types import ListParams
+from openai_client.types import AssistantParam, ListParams
 
 logger = getLogger(__name__)
 
@@ -52,25 +48,20 @@ def _cleanup_answer(content: str) -> str:
 
 
 def caller(
-    client: OpenAiClient,
+    client: OpenAI,
     messages: ListParams,
     *,
     append: bool = True,
     is_bytez: bool = False,
 ) -> dict[str, Callable]:
     return {
-        "completion": lambda: _call_completion(client, messages, append=append),
+        "completion": lambda: _completion(client, messages, append=append),
         "bytez": lambda: _call_bytez(client, messages, append=append),
         "stream": lambda: _iter_chunk(_stream_chunk(client, messages), is_bytez=is_bytez),
     }
 
 
-async def _call_completion(
-    client: OpenAiClient,
-    messages: ListParams,
-    *,
-    append: bool = True,
-) -> str | None:
+async def _completion(client: OpenAI, messages: ListParams, *, append: bool = True) -> str | None:
     async with _handle_api_call():
         completion = await client.completion(messages)
 
@@ -86,7 +77,7 @@ async def _call_completion(
         return answer
 
 
-async def _call_bytez(client: OpenAiClient, messages: ListParams, *, append: bool = True) -> str:
+async def _call_bytez(client: OpenAI, messages: ListParams, *, append: bool = True) -> str:
     async with _handle_api_call():
         response = await client.bytez(messages)
 
@@ -152,10 +143,7 @@ async def _iter_chunk(chunks: AsyncIterator[str | None], *, is_bytez: bool = Fal
     print()
 
 
-async def _stream_chunk(
-    client: OpenAiClient,
-    messages: ListParams,
-) -> AsyncGenerator[str | None]:
+async def _stream_chunk(client: OpenAI, messages: ListParams) -> AsyncGenerator[str | None]:
     async with _handle_api_call():
         stream = cast(
             AsyncStream[ChatCompletionChunk],
@@ -181,4 +169,4 @@ async def _stream_chunk(
 
 def _append_assistant_message(messages: ListParams, content: str) -> None:
     assistant_param = OpenAIChatMessage(role="assistant", content=content)
-    messages.append(ChatCompletionAssistantMessageParam(**assistant_param.model_dump()))
+    messages.append(AssistantParam(**assistant_param.model_dump()))

@@ -8,23 +8,23 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from openai_client.services.web_search import (
-    SearchClientError,
+    SearchError,
     _BraveSearch,
     _ExaSearch,
     _providers,
 )
 
 
-class TestSearchClientError:
+class TestSearchError:
     def test_inherits_from_exception(self) -> None:
-        assert issubclass(SearchClientError, Exception)
+        assert issubclass(SearchError, Exception)
 
     def test_can_be_raised(self) -> None:
         def _client_error() -> None:
             details = "Search failed"
-            raise SearchClientError(details)
+            raise SearchError(details)
 
-        with pytest.raises(SearchClientError) as context:
+        with pytest.raises(SearchError) as context:
             _client_error()
         assert str(context.value) == "Search failed"
 

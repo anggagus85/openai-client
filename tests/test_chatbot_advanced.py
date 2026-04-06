@@ -5,12 +5,8 @@
 from asyncio import run as async_run
 from unittest.mock import patch
 
-from openai.types.chat import ChatCompletionSystemMessageParam, ChatCompletionUserMessageParam
-
-from openai_client.services.chatbot import (
-    _append_user_message,
-    _augment_with_search,
-)
+from openai_client.services.chatbot import _append_user_message, _augment_with_search
+from openai_client.types import SystemParam, UserParam
 
 
 class TestAppendUserMessage:
@@ -30,8 +26,8 @@ class TestAppendUserMessage:
 class TestAugmentWithSearch:
     def test_returns_original_for_non_tourism_query(self) -> None:
         messages: list = [
-            ChatCompletionSystemMessageParam(role="system", content="system"),
-            ChatCompletionUserMessageParam(role="user", content="hi"),
+            SystemParam(role="system", content="system"),
+            UserParam(role="user", content="hi"),
         ]
         result = async_run(_augment_with_search("hi", messages))
         assert result is None
@@ -39,8 +35,8 @@ class TestAugmentWithSearch:
 
     def test_returns_original_when_search_fails(self) -> None:
         messages: list = [
-            ChatCompletionSystemMessageParam(role="system", content="system"),
-            ChatCompletionUserMessageParam(
+            SystemParam(role="system", content="system"),
+            UserParam(
                 role="user",
                 content="What are the best beaches in Bali?",
             ),
@@ -56,8 +52,8 @@ class TestAugmentWithSearch:
 
     def test_returns_augmented_when_search_succeeds(self) -> None:
         messages: list = [
-            ChatCompletionSystemMessageParam(role="system", content="system"),
-            ChatCompletionUserMessageParam(
+            SystemParam(role="system", content="system"),
+            UserParam(
                 role="user",
                 content="What are the best beaches in Bali?",
             ),

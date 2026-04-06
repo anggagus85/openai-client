@@ -10,7 +10,7 @@ from openai_client.configs import settings
 logger = getLogger(__name__)
 
 
-class SearchClientError(Exception):
+class SearchError(Exception):
     pass
 
 

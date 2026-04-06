@@ -19,7 +19,7 @@ from openai_client.utils import save_to_file
 logger = getLogger(__name__)
 
 
-class OpenAiClient(AsyncOpenAI):
+class OpenAI(AsyncOpenAI):
     def __init__(self, api_key: str, base_url: str, model: str, timeout: float = 60.0) -> None:
         super().__init__(api_key=api_key, base_url=base_url, timeout=timeout)
         self.model = model

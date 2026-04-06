@@ -5,13 +5,12 @@ from html import escape
 from json import JSONDecodeError, loads
 from logging import getLogger
 
-from openai.types.chat import ChatCompletionSystemMessageParam, ChatCompletionUserMessageParam
 from pydantic import ValidationError
 
-from openai_client.client import OpenAiClient
+from openai_client.client import OpenAI
 from openai_client.schemas.ai import AnalysisFormat, ContactAnalysisResponse, EmailInquiry
 from openai_client.services.caller import caller
-from openai_client.types import ListParams
+from openai_client.types import ListParams, SystemParam, UserParam
 
 logger = getLogger(__name__)
 
@@ -64,18 +63,18 @@ def _contact_analysis_prompt(name: str, message: str) -> str:
 
 def _email_messages(content: str) -> ListParams:
     return [
-        ChatCompletionSystemMessageParam(
+        SystemParam(
             role="system",
             content="You are a friendly, warm, welcoming, enthusiastic and an expert travel assistant for Bali travel service company.",
         ),
-        ChatCompletionUserMessageParam(
+        UserParam(
             role="user",
             content=content,
         ),
     ]
 
 
-async def analyze_contact(email_inquiry: EmailInquiry, client: OpenAiClient, method: str) -> str:
+async def analyze_contact(email_inquiry: EmailInquiry, client: OpenAI, method: str) -> str:
     messages = _email_messages(
         _contact_analysis_prompt(email_inquiry.name, email_inquiry.message),
     )
@@ -322,7 +321,7 @@ def _create_body(request: EmailInquiry, analysis: AnalysisFormat) -> str:
 
 async def confirmation_message(
     request: EmailInquiry,
-    ai_client: OpenAiClient,
+    ai_client: OpenAI,
     method: str,
     *,
     sent: bool = True,
@@ -343,11 +342,7 @@ async def confirmation_message(
         )
 
 
-def _confirmation_message_prompt(
-    request: EmailInquiry,
-    *,
-    sent: bool = True,
-) -> str:
+def _confirmation_message_prompt(request: EmailInquiry, *, sent: bool = True) -> str:
     """Generate confirmation message for contact inquiry."""
 
     if sent:

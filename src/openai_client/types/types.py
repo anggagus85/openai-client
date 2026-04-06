@@ -1,5 +1,13 @@
 # src/openai_client/types/types.py
 
-from openai.types.chat import ChatCompletionMessageParam
+from openai.types.chat import (
+    ChatCompletionAssistantMessageParam,
+    ChatCompletionMessageParam,
+    ChatCompletionSystemMessageParam,
+    ChatCompletionUserMessageParam,
+)
 
-type ListParams = list[ChatCompletionMessageParam]
+AssistantParam = ChatCompletionAssistantMessageParam
+ListParams = list[ChatCompletionMessageParam]
+SystemParam = ChatCompletionSystemMessageParam
+UserParam = ChatCompletionUserMessageParam

@@ -1,20 +1,19 @@
 # src/openai_client/services/chatbot.py
 
-from asyncio import to_thread
+from asyncio import CancelledError, to_thread
 from contextlib import suppress
 from logging import getLogger
 from re import IGNORECASE
 from re import compile as re_compile
 from re import escape as re_escape
 
-from openai.types.chat import ChatCompletionSystemMessageParam, ChatCompletionUserMessageParam
 from rich import print as rprint
 
-from openai_client.client import OpenAiClient
+from openai_client.client import OpenAI
 from openai_client.schemas.ai import OpenAIChatMessage
 from openai_client.services.caller import caller
 from openai_client.services.web_search import WebSearch
-from openai_client.types import ListParams
+from openai_client.types import ListParams, SystemParam, UserParam
 
 logger = getLogger(__name__)
 
@@ -334,8 +333,8 @@ async def _search_bali_context(question: str) -> str | None:
     return results
 
 
-def _build_search_context_message(results: str) -> ChatCompletionSystemMessageParam:
-    return ChatCompletionSystemMessageParam(
+def _build_search_context_message(results: str) -> SystemParam:
+    return SystemParam(
         role="system",
         content=f"""\
 <search_context>
@@ -382,9 +381,9 @@ def _system_message() -> OpenAIChatMessage:
     )
 
 
-async def chatbot(client: OpenAiClient, method: str) -> None:
+async def chatbot(client: OpenAI, method: str) -> None:
     messages: ListParams = [
-        ChatCompletionSystemMessageParam(**_system_message().model_dump()),
+        SystemParam(**_system_message().model_dump()),
     ]
     await _run_chat(client, method, messages)
 
@@ -394,7 +393,7 @@ def _append_user_message(question: str, messages: ListParams) -> None:
         role="user",
         content=question.strip(),
     )
-    messages.append(ChatCompletionUserMessageParam(**user_param.model_dump()))
+    messages.append(UserParam(**user_param.model_dump()))
 
 
 async def _augment_with_search(question: str, messages: ListParams) -> int | None:
@@ -411,11 +410,11 @@ async def _augment_with_search(question: str, messages: ListParams) -> int | Non
     return idx
 
 
-async def _run_chat(client: OpenAiClient, method: str, messages: ListParams) -> None:
+async def _run_chat(client: OpenAI, method: str, messages: ListParams) -> None:
     logger.info("Running chatbot with %s", client)
     is_bytez = "api.bytez.com" in str(client.base_url)
 
-    with suppress(KeyboardInterrupt):
+    with suppress(KeyboardInterrupt, CancelledError, InterruptedError, EOFError):
         while True:
             rprint("\n[b i blue]You:")
             _append_user_message(question := await to_thread(input), messages)

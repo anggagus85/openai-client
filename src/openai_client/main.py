@@ -1,5 +1,4 @@
 from asyncio import run as async_run
-from contextlib import suppress
 from enum import StrEnum
 from logging import ERROR, basicConfig, getLogger
 from pathlib import Path
@@ -8,7 +7,7 @@ from rich import print as rprint
 from rich.logging import RichHandler
 from rich.traceback import install
 
-from openai_client.client import OpenAiClient
+from openai_client.client import OpenAI
 from openai_client.configs import settings
 from openai_client.schemas.ai import EmailInquiry, ItineraryRequestMD
 from openai_client.services import (
@@ -44,11 +43,11 @@ class Methods(StrEnum):
     STREAM = "stream"
 
 
-async def _do_chat(client: OpenAiClient, method: str) -> None:
+async def _do_chat(client: OpenAI, method: str) -> None:
     await chatbot(client, method)
 
 
-async def _generate_itinerary(client: OpenAiClient, method: str) -> None:
+async def _generate_itinerary(client: OpenAI, method: str) -> None:
     itinerary_req = ItineraryRequestMD(
         duration=6,
         interests=["wellness", "temples", "activities"],
@@ -57,7 +56,7 @@ async def _generate_itinerary(client: OpenAiClient, method: str) -> None:
     await itinerary(itinerary_req, client, method)
 
 
-async def _email_inquiry(client: OpenAiClient, method: str) -> None:
+async def _email_inquiry(client: OpenAI, method: str) -> None:
     email_inquiry = EmailInquiry(
         name="John Doe",
         subject="Travel Inquiry",
@@ -94,12 +93,11 @@ def main() -> None:
             "model": "mistralai/mistral-large-3-675b-instruct-2512",
         },
     }
-    client = OpenAiClient(**kwargs["inception"])
+    client = OpenAI(**kwargs["inception"])
 
     # client.list_models("openrouter")
 
-    with suppress(KeyboardInterrupt):
-        async_run(_do_chat(client, Methods.STREAM))
+    async_run(_do_chat(client, Methods.STREAM))  # break with ctrl+d
 
     # async_run(_generate_itinerary(client, Methods.COMPLETION))
 

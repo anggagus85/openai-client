@@ -1,6 +1,6 @@
 # tests/test_caller_advanced.py
 
-"""Advanced tests for caller module - _call_completion, _call_bytez, _iter_chunk, _stream_chunk, _append_assistant_message."""
+"""Advanced tests for caller module - _completion, _call_bytez, _iter_chunk, _stream_chunk, _append_assistant_message."""
 
 from collections.abc import AsyncIterator
 from unittest.mock import AsyncMock, MagicMock
@@ -12,7 +12,7 @@ from openai_client.errors import ApiError, AppSystemError
 from openai_client.services.caller.caller import (
     _append_assistant_message,
     _call_bytez,
-    _call_completion,
+    _completion,
     _iter_chunk,
     _stream_chunk,
 )
@@ -29,7 +29,7 @@ class TestCallCompletion:
         mock_client.completion.return_value = mock_completion
 
         messages: list = []
-        result = await _call_completion(mock_client, messages, append=False)
+        result = await _completion(mock_client, messages, append=False)
         assert result == "Hello, world!"
 
     async def test_returns_empty_on_no_choices(self) -> None:
@@ -41,7 +41,7 @@ class TestCallCompletion:
         mock_client.completion.return_value = mock_completion
 
         messages: list = []
-        result = await _call_completion(mock_client, messages, append=False)
+        result = await _completion(mock_client, messages, append=False)
         assert result == ""
 
     async def test_appends_assistant_message(self) -> None:
@@ -54,7 +54,7 @@ class TestCallCompletion:
         mock_client.completion.return_value = mock_completion
 
         messages: list = []
-        await _call_completion(mock_client, messages, append=True)
+        await _completion(mock_client, messages, append=True)
         assert len(messages) == 1
         assert messages[0]["role"] == "assistant"
         assert messages[0]["content"] == "Answer"
@@ -69,7 +69,7 @@ class TestCallCompletion:
         mock_client.completion.return_value = mock_completion
 
         messages: list = []
-        result = await _call_completion(mock_client, messages, append=False)
+        result = await _completion(mock_client, messages, append=False)
         assert result == "actual answer"
 
     async def test_returns_empty_on_none_content(self) -> None:
@@ -82,7 +82,7 @@ class TestCallCompletion:
         mock_client.completion.return_value = mock_completion
 
         messages: list = []
-        result = await _call_completion(mock_client, messages, append=False)
+        result = await _completion(mock_client, messages, append=False)
         assert result is None
 
 
