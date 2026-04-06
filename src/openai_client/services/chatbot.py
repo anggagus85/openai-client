@@ -9,7 +9,7 @@ from re import escape as re_escape
 
 from rich import print as rprint
 
-from openai_client.client import OpenAI
+from openai_client.client import OpenAIClient
 from openai_client.schemas.ai import OpenAIChat
 from openai_client.services.web_search import WebSearch
 from openai_client.types import ListParams, SystemParam, UserParam
@@ -344,7 +344,7 @@ def _chat_system_message() -> OpenAIChat:
 
 
 class Chatbot:
-    def __init__(self, client: OpenAI) -> None:
+    def __init__(self, client: OpenAIClient) -> None:
         self._client = client
         self._messages: ListParams = [
             SystemParam(**_chat_system_message().model_dump()),

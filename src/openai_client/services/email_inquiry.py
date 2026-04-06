@@ -7,7 +7,7 @@ from logging import getLogger
 
 from pydantic import ValidationError
 
-from openai_client.client import OpenAI
+from openai_client.client import OpenAIClient
 from openai_client.schemas.ai import AnalysisFormat, ContactAnalysisResponse, EmailInquiry
 from openai_client.types import ListParams, SystemParam, UserParam
 
@@ -28,7 +28,7 @@ def _email_messages(content: str) -> ListParams:
 
 
 class EmailService:
-    def __init__(self, client: OpenAI, inquiry: EmailInquiry) -> None:
+    def __init__(self, client: OpenAIClient, inquiry: EmailInquiry) -> None:
         self._client = client
         self._inquiry = inquiry
         self._messages: ListParams = []

@@ -1,4 +1,4 @@
-# OpenAI Client
+# OpenAI-Client
 
 A Bali tourism AI assistant built on top of the OpenAI Python SDK. Provides an interactive chatbot, AI-powered itinerary generation, and email inquiry analysis with HTML response generation -- all tailored for **BaliBlissed**, a Bali travel concierge service.
 
@@ -16,7 +16,7 @@ A Bali tourism AI assistant built on top of the OpenAI Python SDK. Provides an i
 src/openai_client/
 |-- main.py                  # Entry point
 |-- client/
-|   `-- openai_client.py     # Core client extending openai.OpenAI
+|   `-- openai_client.py     # Core client extending openai.AsyncOpenAI
 |-- configs/
 |   `-- settings.py          # Pydantic Settings (env vars)
 |-- decorators/
@@ -101,7 +101,7 @@ Each feature supports three calling methods:
 
 | Method | Description |
 | --- | --- |
-| `"completion"` | Standard OpenAI chat completion |
+| `"completion"` | Standard Async OpenAI chat completion |
 | `"bytez"` | Bytez API call |
 | `"stream"` | Streaming response with real-time token output |
 

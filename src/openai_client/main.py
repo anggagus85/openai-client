@@ -7,7 +7,7 @@ from rich import print as rprint
 from rich.logging import RichHandler
 from rich.traceback import install
 
-from openai_client.client import OpenAI
+from openai_client.client import OpenAIClient
 from openai_client.configs import settings
 from openai_client.schemas.ai import EmailInquiry, ItineraryRequestMD
 from openai_client.services import Chatbot, EmailService, Itinerary
@@ -38,11 +38,11 @@ class Methods(StrEnum):
     STREAM = "stream"
 
 
-async def _do_chat(client: OpenAI, method: str) -> None:
+async def _do_chat(client: OpenAIClient, method: str) -> None:
     await Chatbot(client).run(method)
 
 
-async def _generate_itinerary(client: OpenAI, method: str) -> None:
+async def _generate_itinerary(client: OpenAIClient, method: str) -> None:
     itinerary_req = ItineraryRequestMD(
         duration=6,
         interests=["wellness", "temples", "activities"],
@@ -51,12 +51,12 @@ async def _generate_itinerary(client: OpenAI, method: str) -> None:
     await Itinerary(client, itinerary_req).generate(method)
 
 
-async def _email_inquiry(client: OpenAI, method: str) -> None:
+async def _email_inquiry(client: OpenAIClient, method: str) -> None:
     inquiry = EmailInquiry(
         name="John Doe",
         subject="Travel Inquiry",
         message="I would like to book a trip to Bali for 7 days. And for a smooth and safe drive please provide a driver who can speak English.",
-        email="jhondoe@gmail.com",
+        email="johndoe@gmail.com",
     )
     service = EmailService(client, inquiry)
     body = await service.analyze_contact(method)
@@ -89,7 +89,7 @@ def main() -> None:
             "model": "mistralai/mistral-large-3-675b-instruct-2512",
         },
     }
-    client = OpenAI(**kwargs["inception"])
+    client = OpenAIClient(**kwargs["inception"])
 
     # client.list_models("openrouter")
 

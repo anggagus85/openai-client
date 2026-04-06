@@ -1,5 +1,5 @@
 # src/openai_client/client/__init__.py
 
-from .openai_client import OpenAI
+from .openai_client import OpenAIClient
 
-__all__ = ["OpenAI"]
+__all__ = ["OpenAIClient"]

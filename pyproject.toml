@@ -1,9 +1,9 @@
 #:tombi schema.strict = false
 
 [project]
-name = "openai_client"
+name = "openai-client"
 version = "0.1.0"
-description = "OpenAI Client is a client for OpenAI API that can be used for a variety of tasks."
+description = "OpenAI-Client is a client for OpenAI API that can be used for a variety of tasks."
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [

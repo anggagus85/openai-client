@@ -45,7 +45,7 @@ async def _handle_api_call() -> AsyncGenerator:
         raise UnknownError(e) from e
 
 
-class OpenAI(AsyncOpenAI):
+class OpenAIClient(AsyncOpenAI):
     def __init__(self, api_key: str, base_url: str, model: str, timeout: float = 60.0) -> None:
         super().__init__(api_key=api_key, base_url=base_url, timeout=timeout)
         self.model = model

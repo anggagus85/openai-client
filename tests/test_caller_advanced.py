@@ -8,12 +8,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from bytez.client import Response
 
-from openai_client.client.openai_client import OpenAI
+from openai_client.client.openai_client import OpenAIClient
 from openai_client.errors import ApiError, AppSystemError
 
 
-def _make_mock_client() -> OpenAI:
-    instance = OpenAI.__new__(OpenAI)
+def _make_mock_client() -> OpenAIClient:
+    instance = OpenAIClient.__new__(OpenAIClient)
     instance.model = "test-model"
     instance.base_url = "https://api.example.com"
     instance.messages = []

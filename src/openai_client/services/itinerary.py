@@ -4,7 +4,7 @@ from datetime import datetime
 from logging import getLogger
 from pathlib import Path
 
-from openai_client.client import OpenAI
+from openai_client.client import OpenAIClient
 from openai_client.configs import WHATSAPP_NUMBER
 from openai_client.schemas.ai import ItineraryRequestMD
 from openai_client.services.web_search import WebSearch
@@ -25,7 +25,7 @@ def _itinerary_system_message() -> SystemParam:
 
 
 class Itinerary:
-    def __init__(self, client: OpenAI, itinerary_req: ItineraryRequestMD) -> None:
+    def __init__(self, client: OpenAIClient, itinerary_req: ItineraryRequestMD) -> None:
         self._client = client
         self._itinerary_req = itinerary_req
         self.messages: ListParams = [_itinerary_system_message()]
