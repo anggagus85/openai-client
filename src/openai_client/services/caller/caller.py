@@ -82,7 +82,7 @@ async def _call_completion(
     if content := assistant_message.content:
         answer = _cleanup_answer(content)
         if append:
-            await _append_assistant_message(messages, answer)
+            _append_assistant_message(messages, answer)
         return answer
 
 
@@ -114,7 +114,7 @@ async def _call_bytez(client: OpenAiClient, messages: ListParams, *, append: boo
 
     answer = _cleanup_answer(out_dict["content"])
     if append:
-        await _append_assistant_message(messages, answer)
+        _append_assistant_message(messages, answer)
     return answer
 
 
@@ -174,11 +174,11 @@ async def _stream_chunk(
             yield content
 
     if accumulated:
-        await _append_assistant_message(messages, accumulated)
+        _append_assistant_message(messages, accumulated)
     else:
         yield None
 
 
-async def _append_assistant_message(messages: ListParams, content: str) -> None:
+def _append_assistant_message(messages: ListParams, content: str) -> None:
     assistant_param = OpenAIChatMessage(role="assistant", content=content)
     messages.append(ChatCompletionAssistantMessageParam(**assistant_param.model_dump()))

@@ -7,11 +7,7 @@ from re import IGNORECASE
 from re import compile as re_compile
 from re import escape as re_escape
 
-from openai.types.chat import (
-    ChatCompletionAssistantMessageParam,
-    ChatCompletionSystemMessageParam,
-    ChatCompletionUserMessageParam,
-)
+from openai.types.chat import ChatCompletionSystemMessageParam, ChatCompletionUserMessageParam
 from rich import print as rprint
 
 from openai_client.client import OpenAiClient
@@ -401,17 +397,18 @@ def _append_user_message(question: str, messages: ListParams) -> None:
     messages.append(ChatCompletionUserMessageParam(**user_param.model_dump()))
 
 
-async def _augment_with_search(question: str, messages: ListParams) -> ListParams:
+async def _augment_with_search(question: str, messages: ListParams) -> int | None:
     if not _is_tourism_query(question):
-        return messages
+        return
 
     rprint("[dim]Searching for latest information...[/dim]")
     if not (search_results := await _search_bali_context(question)):
-        return messages
+        return
 
-    augmented = list(messages)
-    augmented.insert(len(augmented) - 1, _build_search_context_message(search_results))
-    return augmented
+    # Insert search context just before the user message
+    idx = len(messages) - 1
+    messages.insert(idx, _build_search_context_message(search_results))
+    return idx
 
 
 async def _run_chat(client: OpenAiClient, method: str, messages: ListParams) -> None:
@@ -423,27 +420,23 @@ async def _run_chat(client: OpenAiClient, method: str, messages: ListParams) -> 
             rprint("\n[b i blue]You:")
             _append_user_message(question := await to_thread(input), messages)
 
-            augmented_messages = await _augment_with_search(question, messages)
+            search_ctx_idx = await _augment_with_search(question, messages)
 
             rprint("\n[b i green]AI:")
-            answer = await caller(client, augmented_messages, append=False, is_bytez=is_bytez)[
-                method
-            ]()
+            answer = await caller(client, messages, append=False, is_bytez=is_bytez)[method]()
+
+            # Remove temporary search context from history
+            if search_ctx_idx is not None:
+                messages.pop(search_ctx_idx)
 
             if method == "stream":
-                if answer is not None:
-                    _append_assistant_to_history(messages, answer)
+                # Stream already printed output via _iter_chunk
+                pass
             elif not answer:
                 rprint("\n[b i red]No reply.")
                 continue
             else:
-                _append_assistant_to_history(messages, answer)
                 rprint(answer, end="\n", flush=True)
 
             if "bye" in question.lower():
                 break
-
-
-def _append_assistant_to_history(messages: ListParams, content: str) -> None:
-    assistant_param = OpenAIChatMessage(role="assistant", content=content)
-    messages.append(ChatCompletionAssistantMessageParam(**assistant_param.model_dump()))

@@ -34,7 +34,7 @@ class TestAugmentWithSearch:
             ChatCompletionUserMessageParam(role="user", content="hi"),
         ]
         result = async_run(_augment_with_search("hi", messages))
-        assert result is messages
+        assert result is None
         assert len(messages) == 2
 
     def test_returns_original_when_search_fails(self) -> None:
@@ -51,7 +51,7 @@ class TestAugmentWithSearch:
                 _augment_with_search("What are the best beaches in Bali?", messages),
             )
 
-        assert result is messages
+        assert result is None
         assert len(messages) == 2
 
     def test_returns_augmented_when_search_succeeds(self) -> None:
@@ -71,7 +71,5 @@ class TestAugmentWithSearch:
                 _augment_with_search("What are the best beaches in Bali?", messages),
             )
 
-        assert result is not messages
-        assert len(result) == 3
-        assert result[-2]["role"] == "system"
-        assert len(messages) == 2
+        assert result == 1
+        assert len(messages) == 3

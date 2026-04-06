@@ -309,17 +309,17 @@ class TestStreamChunk:
 
 
 class TestAppendAssistantMessage:
-    async def test_appends_to_messages_list(self) -> None:
+    def test_appends_to_messages_list(self) -> None:
         messages: list = []
-        await _append_assistant_message(messages, "Test content")
+        _append_assistant_message(messages, "Test content")
         assert len(messages) == 1
         assert messages[0]["role"] == "assistant"
         assert messages[0]["content"] == "Test content"
 
-    async def test_appends_multiple(self) -> None:
+    def test_appends_multiple(self) -> None:
         messages: list = []
-        await _append_assistant_message(messages, "First")
-        await _append_assistant_message(messages, "Second")
+        _append_assistant_message(messages, "First")
+        _append_assistant_message(messages, "Second")
         assert len(messages) == 2
         assert messages[0]["content"] == "First"
         assert messages[1]["content"] == "Second"

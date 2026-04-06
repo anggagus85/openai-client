@@ -1,4 +1,5 @@
 from asyncio import run as async_run
+from contextlib import suppress
 from enum import StrEnum
 from logging import ERROR, basicConfig, getLogger
 from pathlib import Path
@@ -97,7 +98,8 @@ def main() -> None:
 
     # client.list_models("openrouter")
 
-    async_run(_do_chat(client, Methods.STREAM))
+    with suppress(KeyboardInterrupt):
+        async_run(_do_chat(client, Methods.STREAM))
 
     # async_run(_generate_itinerary(client, Methods.COMPLETION))
 
