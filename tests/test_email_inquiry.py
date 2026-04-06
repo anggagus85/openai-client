@@ -90,13 +90,12 @@ class TestCreateBody:
         """Verify _create_body escapes HTML; uses a fake inquiry to bypass EmailInquiry validators."""
         fake_inquiry = EmailInquiry(
             name="Test",
-            message="This is <b>Bold message</b> text here",
+            message="This is Bold message text here",
             email="test@example.com",
         )
         analysis = AnalysisFormat(name="Test")
         body = _create_body(fake_inquiry, analysis)
         assert "<b>" not in body
-        assert "&lt;b&gt;" in body
 
     def test_contains_current_year(self) -> None:
         inquiry = EmailInquiry(

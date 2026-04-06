@@ -6,11 +6,11 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from openai_client.services.search import (
-    BraveSearchClient,
-    ExaSearchClient,
+from openai_client.services.web_search import (
     SearchClientError,
-    providers,
+    _BraveSearch,
+    _ExaSearch,
+    _providers,
 )
 
 
@@ -30,16 +30,17 @@ class TestSearchClientError:
 
 class TestExaSearchClient:
     def test_init_defaults(self) -> None:
-        client = ExaSearchClient(api_key="test-key")
+        client = _ExaSearch(api_key="test-key")
         assert client.api_key == "test-key"
         assert client.base_url == "https://api.exa.ai/search"
 
     def test_init_custom_url(self) -> None:
-        client = ExaSearchClient(api_key="test-key", base_url="https://custom.exa.ai")
+        client = _ExaSearch(api_key="test-key")
+        client.base_url = "https://custom.exa.ai"
         assert client.base_url == "https://custom.exa.ai"
 
     def test_str(self) -> None:
-        client = ExaSearchClient(api_key="test-key")
+        client = _ExaSearch(api_key="test-key")
         assert "exa" in str(client)
 
     def test_search_success(self) -> None:
@@ -55,8 +56,8 @@ class TestExaSearchClient:
         mock_client.__exit__ = MagicMock(return_value=False)
         mock_client.post.return_value = mock_response
 
-        with patch("openai_client.services.search.Client", return_value=mock_client):
-            success, result = ExaSearchClient(api_key="key").search("Bali beaches")
+        with patch("openai_client.services.web_search.Client", return_value=mock_client):
+            success, result = _ExaSearch(api_key="key").search("Bali beaches")
             assert success is True
             assert "Bali Beach" in result
 
@@ -66,13 +67,13 @@ class TestExaSearchClient:
         mock_client.__exit__ = MagicMock(return_value=False)
         mock_client.post.side_effect = ConnectionError("Network error")
 
-        with patch("openai_client.services.search.Client", return_value=mock_client):
-            success, result = ExaSearchClient(api_key="key").search("Bali")
+        with patch("openai_client.services.web_search.Client", return_value=mock_client):
+            success, result = _ExaSearch(api_key="key").search("Bali")
             assert success is False
             assert "Search error" in result
 
     def test_process_results(self) -> None:
-        client = ExaSearchClient(api_key="key")
+        client = _ExaSearch(api_key="key")
         data = {
             "results": [
                 {"title": "Place 1", "url": "https://a.com", "text": "Details about place 1"},
@@ -85,19 +86,19 @@ class TestExaSearchClient:
         assert "https://a.com" in result
 
     def test_process_results_empty(self) -> None:
-        client = ExaSearchClient(api_key="key")
+        client = _ExaSearch(api_key="key")
         result = client._process_results({"results": []})
         assert result == ""
 
 
 class TestBraveSearchClient:
     def test_init_defaults(self) -> None:
-        client = BraveSearchClient(api_key="test-key")
+        client = _BraveSearch(api_key="test-key")
         assert client.api_key == "test-key"
         assert client.base_url == "https://api.search.brave.com/res/v1/web/search"
 
     def test_str(self) -> None:
-        client = BraveSearchClient(api_key="test-key")
+        client = _BraveSearch(api_key="test-key")
         assert "brave" in str(client)
 
     def test_search_success(self) -> None:
@@ -115,8 +116,8 @@ class TestBraveSearchClient:
         mock_client.__exit__ = MagicMock(return_value=False)
         mock_client.get.return_value = mock_response
 
-        with patch("openai_client.services.search.Client", return_value=mock_client):
-            success, result = BraveSearchClient(api_key="key").search("Bali travel")
+        with patch("openai_client.services.web_search.Client", return_value=mock_client):
+            success, result = _BraveSearch(api_key="key").search("Bali travel")
             assert success is True
             assert "Bali Guide" in result
 
@@ -126,15 +127,15 @@ class TestBraveSearchClient:
         mock_client.__exit__ = MagicMock(return_value=False)
         mock_client.get.side_effect = ConnectionError("Network error")
 
-        with patch("openai_client.services.search.Client", return_value=mock_client):
-            success, result = BraveSearchClient(api_key="key").search("Bali")
+        with patch("openai_client.services.web_search.Client", return_value=mock_client):
+            success, result = _BraveSearch(api_key="key").search("Bali")
             assert success is False
             assert "Search error" in result
 
 
 class TestProviders:
     def test_returns_list(self) -> None:
-        result = providers()
+        result = _providers()
         assert isinstance(result, list)
         assert len(result) > 0
         for provider in result:

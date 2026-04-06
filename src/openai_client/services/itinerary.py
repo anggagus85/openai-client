@@ -12,7 +12,7 @@ from openai_client.client import OpenAiClient
 from openai_client.configs import WHATSAPP_NUMBER
 from openai_client.schemas.ai import ItineraryRequestMD
 from openai_client.services.caller import caller
-from openai_client.services.search import providers
+from openai_client.services.web_search import WebSearch
 from openai_client.types import ListParams
 from openai_client.utils import save_to_file
 
@@ -483,24 +483,17 @@ def _search_bali_info(itinerary_req: ItineraryRequestMD) -> str:
 
 
 def itinerary(itinerary_req: ItineraryRequestMD, client: OpenAiClient, method: str) -> None:
-    for provider in providers():
-        logger.info("Searching for latest Bali information with %s", provider)
+    web_search = WebSearch("Searching latest Bali itinerary information with")
 
-        success, results = provider.search(_search_bali_info(itinerary_req))
-
-        if not success:
-            logger.warning("Search with %s failed, error: %s", provider, results)
-            continue
-
-        logger.info("Search completed successfully, generating itinerary with latest information")
-        logger.info("Generating itinerary with %s", client)
-        messages = _itinerary_search_messages(itinerary_req, results)
-
-        _generate_and_save(messages, client, method)
-        break
-    else:
+    if not (results := web_search.search(_search_bali_info(itinerary_req))):
         logger.warning("Search returned no results or error, proceeding without search data")
         _plain_itinerary(itinerary_req, client, method)
+        return
+
+    logger.info("Generating itinerary with %s", client)
+    messages = _itinerary_search_messages(itinerary_req, results)
+
+    _generate_and_save(messages, client, method)
 
 
 def _generate_and_save(messages: ListParams, client: OpenAiClient, method: str) -> None:

@@ -79,7 +79,6 @@ class EmailInquiry(BaseModel):
         if not v or not v.strip():
             msg = "Message cannot be empty"
             raise ValueError(msg)
-        # Remove potentially harmful characters but preserve basic formatting
         sanitized = sub(r"[<>]", "", v.strip())
         if len(sanitized) < 10:
             msg = "Message must be at least 10 characters long"

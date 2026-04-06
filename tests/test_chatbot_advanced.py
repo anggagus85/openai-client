@@ -2,7 +2,7 @@
 
 """Advanced tests for chatbot service - _inject_search_context, _append_user_message, _run_chat."""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from openai.types.chat import ChatCompletionSystemMessageParam, ChatCompletionUserMessageParam
 
@@ -40,7 +40,8 @@ class TestInjectSearchContext:
         messages: list = [
             ChatCompletionSystemMessageParam(role="system", content="system"),
             ChatCompletionUserMessageParam(
-                role="user", content="What are the best beaches in Bali?",
+                role="user",
+                content="What are the best beaches in Bali?",
             ),
         ]
 
@@ -58,14 +59,12 @@ class TestInjectSearchContext:
         messages: list = [
             ChatCompletionSystemMessageParam(role="system", content="system"),
             ChatCompletionUserMessageParam(
-                role="user", content="What are the best beaches in Bali?",
+                role="user",
+                content="What are the best beaches in Bali?",
             ),
         ]
 
-        mock_provider = MagicMock()
-        mock_provider.search.return_value = (False, "Error")
-
-        with patch("openai_client.services.chatbot.providers", return_value=[mock_provider]):
+        with patch("openai_client.services.chatbot._search_bali_context", return_value=None):
             result = _inject_search_context("What are the best beaches in Bali?", messages)
 
         assert result is None
@@ -75,11 +74,13 @@ class TestInjectSearchContext:
         messages: list = [
             ChatCompletionSystemMessageParam(role="system", content="system"),
             ChatCompletionUserMessageParam(
-                role="user", content="What are the best beaches in Bali?",
+                role="user",
+                content="What are the best beaches in Bali?",
             ),
         ]
 
-        with patch("openai_client.services.chatbot.providers", return_value=[]):
+        with patch("openai_client.services.web_search._providers", return_value=[]):
             result = _inject_search_context("What are the best beaches in Bali?", messages)
 
         assert result is None
+        assert len(messages) == 2

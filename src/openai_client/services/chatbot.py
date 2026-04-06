@@ -12,7 +12,7 @@ from rich import print as rprint
 from openai_client.client import OpenAiClient
 from openai_client.schemas.ai import OpenAIChatMessage
 from openai_client.services.caller import caller
-from openai_client.services.search import BraveSearchClient, ExaSearchClient, providers
+from openai_client.services.web_search import WebSearch
 from openai_client.types import ListParams
 
 logger = getLogger(__name__)
@@ -359,24 +359,17 @@ def _search_bali_context(question: str) -> str | None:
     Returns:
         Formatted search results string, or ``None``.
     """
-    query = f"Bali latest {question}"
-    for provider in providers():
-        logger.info("Chatbot searching with %s", provider)
-        if isinstance(provider, ExaSearchClient):
-            success, results = provider.search(
-                query,
-                num_results=3,
-                contents={"highlights": {"max_characters": 8000}},
-            )
-        elif isinstance(provider, BraveSearchClient):
-            success, results = provider.search(query, count=3)
-        else:
-            continue
+    configs = {
+        "num_results": 3,  # for exa
+        "contents": {"highlights": {"max_characters": 8000}},  # for exa
+        "count": 3,  # for brave
+    }
+    web_search = WebSearch("Chatbot searching Bali latest information with", configs)
 
-        if success:
-            logger.info("Search returned results from %s", provider)
-            return results
-        logger.warning("Search with %s failed, error: %s", provider, results)
+    if not (results := web_search.search(f"Bali latest {question}")):
+        return
+
+    return results
 
 
 def _build_search_context_message(results: str) -> ChatCompletionSystemMessageParam:
