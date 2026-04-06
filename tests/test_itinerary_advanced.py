@@ -1,6 +1,6 @@
 # tests/test_itinerary_advanced.py
 
-"""Advanced tests for itinerary service - itinerary(), _clean_and_save()."""
+"""Advanced tests for itinerary service - itinerary(), _generate_and_save()."""
 
 import tempfile
 from pathlib import Path
@@ -8,16 +8,36 @@ from unittest.mock import MagicMock, patch
 
 from openai_client.schemas.ai import ItineraryRequestMD
 from openai_client.services.itinerary import (
-    _clean_and_save,
+    _generate_and_save,
     itinerary,
 )
+from openai_client.types import ListParams
 
 
-class TestCleanAndSave:
+class TestGenerateAndSave:
     def test_saves_markdown_and_text(self) -> None:
-        with tempfile.TemporaryDirectory() as tmpdir:
-            with patch("pathlib.Path.cwd", return_value=Path(tmpdir)):
-                _clean_and_save("# Test Itinerary\n\nDay 1: Beach")
+        mock_client = MagicMock()
+        mock_client.model = "test-model"
+        mock_client.base_url = "https://api.example.com"
+        messages: ListParams = [
+            {
+                "role": "system",
+                "content": "You are a helpful assistant.",
+            },
+            {
+                "role": "user",
+                "content": "Test Itinerary\n\nDay 1: Beach",
+            },
+        ]
+        with (
+            tempfile.TemporaryDirectory() as tmpdir,
+            patch("pathlib.Path.cwd", return_value=Path(tmpdir)),
+            patch(
+                "openai_client.services.itinerary.caller",
+                return_value={"completion": lambda: "# Test Itinerary\n\nDay 1: Beach"},
+            ),
+        ):
+            _generate_and_save(messages, mock_client, "completion")
 
             md_path = Path(tmpdir) / "itinerary.md"
             txt_path = Path(tmpdir) / "itinerary.txt"

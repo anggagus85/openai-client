@@ -3,7 +3,6 @@
 """Tests for email inquiry service functions."""
 
 from datetime import datetime
-from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 from openai_client.schemas.ai import (
@@ -89,13 +88,13 @@ class TestCreateBody:
 
     def test_create_body_escapes_html_in_message(self) -> None:
         """Verify _create_body escapes HTML; uses a fake inquiry to bypass EmailInquiry validators."""
-        fake_inquiry = SimpleNamespace(
+        fake_inquiry = EmailInquiry(
             name="Test",
             message="This is <b>Bold message</b> text here",
             email="test@example.com",
         )
         analysis = AnalysisFormat(name="Test")
-        body = _create_body(fake_inquiry, analysis)  # type: ignore[arg-type]
+        body = _create_body(fake_inquiry, analysis)
         assert "<b>" not in body
         assert "&lt;b&gt;" in body
 

@@ -82,7 +82,7 @@ class TestCallCompletion:
 
         messages: list = []
         result = _call_completion(mock_client, messages, append=False)
-        assert result == ""
+        assert result is None
 
 
 class TestCallBytez:
