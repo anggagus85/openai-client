@@ -376,7 +376,7 @@ def _search_bali_context(question: str) -> str | None:
         if success:
             logger.info("Search returned results from %s", provider)
             return results
-        logger.warning("Search with %s failed, trying next provider", provider)
+        logger.warning("Search with %s failed, error: %s", provider, results)
 
 
 def _build_search_context_message(results: str) -> ChatCompletionSystemMessageParam:

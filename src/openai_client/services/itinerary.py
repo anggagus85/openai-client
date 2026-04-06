@@ -439,12 +439,7 @@ def _itinerary_messages(itinerary_req: ItineraryRequestMD) -> ListParams:
 def _plain_itinerary(itinerary_req: ItineraryRequestMD, client: OpenAiClient, method: str) -> None:
     logger.info("Generating itinerary with %s", client)
     messages = _itinerary_messages(itinerary_req)
-
-    if not (content := caller(client, messages, append=False)[method]()):
-        logger.warning("No itinerary content returned from OpenAI method %s", method)
-        return
-
-    _clean_and_save(content)
+    _generate_and_save(messages, client, method)
 
 
 def _itinerary_search_messages(
@@ -494,24 +489,25 @@ def itinerary(itinerary_req: ItineraryRequestMD, client: OpenAiClient, method: s
         success, results = provider.search(_search_bali_info(itinerary_req))
 
         if not success:
+            logger.warning("Search with %s failed, error: %s", provider, results)
             continue
 
         logger.info("Search completed successfully, generating itinerary with latest information")
         logger.info("Generating itinerary with %s", client)
         messages = _itinerary_search_messages(itinerary_req, results)
 
-        if not (content := caller(client, messages, append=False)[method]()):
-            logger.warning("No itinerary content returned from OpenAI method %s", method)
-            return
-
-        _clean_and_save(content)
+        _generate_and_save(messages, client, method)
         break
     else:
         logger.warning("Search returned no results or error, proceeding without search data")
         _plain_itinerary(itinerary_req, client, method)
 
 
-def _clean_and_save(content: str) -> None:
+def _generate_and_save(messages: ListParams, client: OpenAiClient, method: str) -> None:
+    if not (content := caller(client, messages, append=False)[method]()):
+        logger.warning("No itinerary content returned from OpenAI method %s", method)
+        return
+
     content = _clean_markdown(content)
     save_to_file(content, Path.cwd() / "itinerary.md")
 

@@ -58,9 +58,9 @@ def _cleanup_answer(content: str) -> str:
         Stripped answer
     """
     answer = content.strip()
-    if "</think>" in answer:
+    if "</think>" in answer and len(parts := answer.split("</think>", 1)) > 1:
         # bytez api response tend to add `<think> </think>` tag
-        answer = answer.split("</think>", 1)[1].strip()
+        answer = parts[1].strip()
     return answer
 
 
@@ -78,7 +78,12 @@ def caller(
     }
 
 
-def _call_completion(client: OpenAiClient, messages: ListParams, *, append: bool = True) -> str:
+def _call_completion(
+    client: OpenAiClient,
+    messages: ListParams,
+    *,
+    append: bool = True,
+) -> str | None:
     with _handle_api_call():
         completion = client.completion(messages)
 
@@ -93,7 +98,6 @@ def _call_completion(client: OpenAiClient, messages: ListParams, *, append: bool
         if append:  # for chatbot memory context
             _append_assistant_message(messages, answer)
         return answer
-    return ""
 
 
 def _call_bytez(client: OpenAiClient, messages: ListParams, *, append: bool = True) -> str:

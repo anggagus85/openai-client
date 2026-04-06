@@ -23,9 +23,7 @@ class OpenAiClient(OpenAI):
     def __init__(self, api_key: str, base_url: str, model: str, timeout: float = 60.0) -> None:
         super().__init__(api_key=api_key, base_url=base_url, timeout=timeout)
         self.model = model
-        self._bytes = Bytez(api_key)
-        self._bytez_model = self._bytes.model(model)
-        self._bytez_params = {"temperature": 0.3}
+        self.api_key = api_key
         self._configs = {"temperature": 0.5, "model": model, "top_p": 1.0}
 
     @with_retry(
@@ -58,12 +56,13 @@ class OpenAiClient(OpenAI):
         exec_retry=API_EXCEPTIONS,
     )
     def bytez(self, messages: ListParams) -> Generator | Response:
-
-        return self._bytez_model.run(messages, self._bytez_params)
+        bytez_model = Bytez(self.api_key).model(self.model)
+        bytez_params = {"temperature": 0.3}
+        return bytez_model.run(messages, bytez_params)
 
     def list_models(self, provider: str) -> None:
         if provider == "bytez":
-            pprint(self._bytes.list.models(options={"task": "chat", "modelId": "Qwen3-4B"}))
+            pprint(Bytez(self.api_key).list.models(options={"task": "chat", "modelId": "Qwen3-4B"}))
             return
 
         model_list = self.models.list()

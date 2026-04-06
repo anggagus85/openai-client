@@ -1,3 +1,4 @@
+from enum import StrEnum
 from logging import ERROR, basicConfig, getLogger
 from pathlib import Path
 
@@ -30,6 +31,15 @@ getLogger("mdformat").setLevel(ERROR)
 getLogger("markdown_it").setLevel(ERROR)
 getLogger("httpx").setLevel(ERROR)
 install()
+
+
+class Methods(StrEnum):
+    # Notes:
+    # method = "completion" or "stream" ->  all kwargs keys are valid
+    # method = "bytez" ->  only kwargs["bytez"] is valid
+    COMPLETION = "completion"
+    BYTEZ = "bytez"
+    STREAM = "stream"
 
 
 def _do_chat(client: OpenAiClient, method: str) -> None:
@@ -69,35 +79,28 @@ def main() -> None:
         "openrouter": {
             "api_key": settings.OPENROUTER_API_KEY,
             "base_url": "https://openrouter.ai/api/v1",
-            # "model": "stepfun/step-3.5-flash:free",
-            "model": "nvidia/nemotron-nano-9b-v2:free",
+            "model": "stepfun/step-3.5-flash:free",
         },
         "bytez": {
             "api_key": settings.BYTEZ_API_KEY,
             "base_url": "https://api.bytez.com/models/v2/openai/v1",
-            "model": "Qwen/Qwen3-8B",
+            "model": "google/gemma-4-E2B-it",
         },
         "nvidia": {
             "api_key": settings.NVIDIA_API_KEY,
             "base_url": "https://integrate.api.nvidia.com/v1",
             "model": "mistralai/mistral-large-3-675b-instruct-2512",
-            # "model": "moonshotai/kimi-k2-thinking",
         },
     }
     client = OpenAiClient(**kwargs["inception"])
 
-    # client.list_models("bytez")
+    # client.list_models("openrouter")
 
-    # Notes:
-    # method = "completion" or "stream" ->  all kwargs keys are valid
-    # method = "bytez" ->  only kwargs["bytez"] is valid
-    methods = ["completion", "bytez", "stream"]
+    _do_chat(client, Methods.STREAM)
 
-    _do_chat(client, methods[2])
+    # _generate_itinerary(client, Methods.COMPLETION)
 
-    # _generate_itinerary(client, methods[0])
-
-    # _email_inquiry(client, methods[0])
+    # _email_inquiry(client, Methods.COMPLETION)
 
 
 if __name__ == "__main__":
