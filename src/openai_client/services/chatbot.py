@@ -9,10 +9,10 @@ from re import escape as re_escape
 
 from rich import print as rprint
 
-from openai_client.client import OpenAIClient
+from openai_client.client import MistralAI, OpenAIClient
 from openai_client.schemas.ai import OpenAIChat
 from openai_client.services.web_search import WebSearch
-from openai_client.types import ListParams, SystemParam, UserParam
+from openai_client.types import ListParams, MistralParams, MistralSystem, SystemParam, UserParam
 
 logger = getLogger(__name__)
 
@@ -311,44 +311,14 @@ _TOURISM_PATTERN = re_compile(
 )
 
 
-def _chat_system_message() -> OpenAIChat:
-    return OpenAIChat(
-        role="system",
-        content="""
-    <assignment>
-    Your name is "Made", you are the official BaliBlissed Concierge, a friendly and expert customer service assistant dedicated to crafting the perfect Balinese getaway. 🌴🥥✨
-    </assignment>
-
-    <personality&_style>
-    - Introduction : Introduce yourself as BaliBlissed Concierge.
-    - Vibe: Be exceptionally warm, welcoming, and enthusiastic. You are the digital face of Bali hospitality.
-    - Engagement: Use emojis liberally to make your content engaging, fun, and vibrant! 🏝️🍹
-    - Formatting: Use bold text and bullet points to ensure your recommendations are easy to scan for travelers on the move.
-    </personality&_style>
-
-    <knowledge&_scope>
-    - Bali Expert: You specialize in Balinese culture, luxury villas, hidden jungle waterfalls, and the best surf spots. 🗺️🌺
-    - Strictly Bali: You are an expert ONLY on Bali. If a user asks about other destinations (like Thailand or Europe), politely pivot the conversation back to the wonders of Bali.
-    - Company First: Always redirect to BaliBlissed website for any booking inquiries, itinerary, and detailed information.
-    </knowledge&_scope>
-
-    <boundaries&_safety>
-    - No over-reply: Focus only on the user's question. Do not provide suggestions, itineraries, information, prices, or recommendations unless the user asks.
-    - No Professional Advice: Never provide legal, medical, or financial advice.
-    - Just a glimpse: If the user asks for more information, suggestions, itineraries, prices, or recommendations, give a glimpse and be concise. If user ask for more details, redirect them to the official BaliBlissed website for more information.
-    - Accuracy: If you aren't sure about a specific opening time or price, suggest the user check the official BaliBlissed website or contact the venue directly.
-    - Prohibited: Reject any questions involving terrorism, racism, pornography, or violence.
-    </boundaries&_safety>
-    """,
-    )
-
-
 class Chatbot:
-    def __init__(self, client: OpenAIClient) -> None:
+    def __init__(
+        self,
+        client: OpenAIClient | MistralAI,
+        system_param: SystemParam | MistralSystem,
+    ) -> None:
         self._client = client
-        self._messages: ListParams = [
-            SystemParam(**_chat_system_message().model_dump()),
-        ]
+        self._messages: ListParams | MistralParams = [system_param]
         self._client.messages = self._messages
         self._question: str = ""
         self._search_results: str = ""
@@ -376,6 +346,10 @@ class Chatbot:
         logger.info("Running chatbot with %s", self._client)
         is_bytez = "api.bytez.com" in str(self._client.base_url)
 
+        bytez_kwargs = {}
+        if isinstance(self._client, OpenAIClient):
+            bytez_kwargs = {"is_bytez": is_bytez}
+
         with suppress(*IGNORED):
             while True:
                 rprint("\n[b i blue]You:")
@@ -385,7 +359,7 @@ class Chatbot:
                 search_ctx_idx = await self._augment_with_search()
 
                 rprint("\n[b i green]AI:")
-                answer = await self._client.call(append=False, is_bytez=is_bytez)[method]()
+                answer = await self._client.call(append=False, **bytez_kwargs)[method]()
 
                 # Remove temporary search context from history
                 if search_ctx_idx is not None:

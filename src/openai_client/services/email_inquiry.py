@@ -7,31 +7,23 @@ from logging import getLogger
 
 from pydantic import ValidationError
 
-from openai_client.client import OpenAIClient
+from openai_client.client import MistralAI, OpenAIClient
 from openai_client.schemas.ai import AnalysisFormat, ContactAnalysisResponse, EmailInquiry
-from openai_client.types import ListParams, SystemParam, UserParam
+from openai_client.types import MistralSystem, MistralUser, SystemParam, UserParam
 
 logger = getLogger(__name__)
 
 
-def _email_messages(content: str) -> ListParams:
-    return [
-        SystemParam(
-            role="system",
-            content="You are a friendly, warm, welcoming, enthusiastic and an expert travel assistant for Bali travel service company.",
-        ),
-        UserParam(
-            role="user",
-            content=content,
-        ),
-    ]
-
-
 class EmailService:
-    def __init__(self, client: OpenAIClient, inquiry: EmailInquiry) -> None:
+    def __init__(
+        self,
+        client: OpenAIClient | MistralAI,
+        inquiry: EmailInquiry,
+        system_param: SystemParam | MistralSystem,
+    ) -> None:
         self._client = client
         self._inquiry = inquiry
-        self._messages: ListParams = []
+        self._system_message = system_param
 
     def _create_body(self, analysis: AnalysisFormat) -> str:
         """Create a body for the email with professional styling."""
@@ -304,9 +296,15 @@ class EmailService:
                 }}
                 """
 
+    def _create_user_message(self, content: str) -> UserParam | MistralUser:
+        if isinstance(self._client, MistralAI):
+            return MistralUser(role="user", content=content)
+        return UserParam(role="user", content=content)
+
     async def analyze_contact(self, method: str) -> str:
-        messages = _email_messages(self._contact_analysis_prompt())
-        self._client.messages = messages
+        content = self._contact_analysis_prompt()
+
+        self._client.messages = [self._system_message, self._create_user_message(content)]
 
         logger.info("Analyzing email inquiry with %s", self._client)
         response = await self._client.call(append=False)[method]()
@@ -326,8 +324,10 @@ class EmailService:
         *,
         sent: bool = True,
     ) -> ContactAnalysisResponse:
-        messages = _email_messages(self._confirmation_message_prompt(sent=sent))
-        self._client.messages = messages
+        content = self._confirmation_message_prompt(sent=sent)
+
+        self._client.messages = [self._system_message, self._create_user_message(content)]
+
         logger.info("Generating confirmation message...")
         response = await self._client.call(append=False)[method]()
         data = {"confirmation": response}

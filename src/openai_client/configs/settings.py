@@ -25,6 +25,7 @@ class Settings(BaseSettings):
     NVIDIA_API_KEY: str
     EXA_API_KEY: str
     BRAVE_API_KEY: str
+    MISTRAL_API_KEY: str
 
     AI_REQUEST_TIMEOUT: int = 60  # seconds
     AI_MAX_RETRIES: int = 2

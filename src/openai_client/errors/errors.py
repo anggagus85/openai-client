@@ -1,5 +1,6 @@
 # src/openai_client/errors/errors.py
 
+from httpx import ReadTimeout
 from openai import (
     AuthenticationError,
     BadRequestError,
@@ -24,6 +25,7 @@ API_EXCEPTIONS = (
     LengthFinishReasonError,
     ContentFilterFinishReasonError,
     InvalidWebhookSignatureError,
+    ReadTimeout,
 )
 
 SYSTEM_EXCEPTIONS = (

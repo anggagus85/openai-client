@@ -50,7 +50,7 @@ class OpenAIClient(AsyncOpenAI):
         super().__init__(api_key=api_key, base_url=base_url, timeout=timeout)
         self.model = model
         self.api_key = api_key
-        self._configs = {"temperature": 0.5, "model": model, "top_p": 1.0}
+        self.configs = {"temperature": 0.5, "model": model, "top_p": 1.0}
         self.messages: ListParams = []
 
     def __str__(self) -> str:
@@ -119,7 +119,7 @@ class OpenAIClient(AsyncOpenAI):
         async with _handle_api_call():
             completion = await self.chat.completions.create(
                 messages=self.messages,
-                **self._configs,
+                **self.configs,
             )
 
         if not (choices := completion.choices):
@@ -206,7 +206,7 @@ class OpenAIClient(AsyncOpenAI):
         async with _handle_api_call():
             stream = await self.chat.completions.create(
                 messages=self.messages,
-                **self._configs,
+                **self.configs,
                 stream=True,
             )
 

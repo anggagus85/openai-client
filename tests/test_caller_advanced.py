@@ -17,7 +17,7 @@ def _make_mock_client() -> OpenAIClient:
     instance.model = "test-model"
     instance.base_url = "https://api.example.com"
     instance.messages = []
-    instance._configs = {"temperature": 0.5, "model": "test-model", "top_p": 1.0}
+    instance.configs = {"temperature": 0.5, "model": "test-model", "top_p": 1.0}
     object.__setattr__(instance, "chat", AsyncMock())
     return instance
 

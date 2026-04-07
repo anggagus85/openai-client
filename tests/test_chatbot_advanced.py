@@ -14,15 +14,15 @@ class TestAppendUserMessage:
         chatbot = mock_chatbot
 
         chatbot._append_user_message("  Hello Bali  ")
-        assert len(chatbot._messages) == 1
-        assert chatbot._messages[0]["role"] == "user"
-        assert chatbot._messages[0]["content"] == "Hello Bali"
+        assert len(chatbot._messages) == 2
+        assert chatbot._messages[1]["role"] == "user"
+        assert chatbot._messages[1]["content"] == "Hello Bali"
 
     def test_strips_whitespace(self, mock_chatbot: Chatbot) -> None:
         chatbot = mock_chatbot
 
         chatbot._append_user_message("   query   ")
-        assert chatbot._messages[0]["content"] == "query"
+        assert chatbot._messages[1]["content"] == "query"
 
 
 class TestAugmentWithSearch:

@@ -13,6 +13,7 @@ import pytest
 
 from openai_client.schemas.ai import ItineraryRequestMD
 from openai_client.services.itinerary import Itinerary
+from openai_client.types import SystemParam
 
 
 @pytest.fixture
@@ -21,6 +22,11 @@ def mock_client() -> MagicMock:
     client.model = "test-model"
     client.base_url = "https://api.example.com"
     return client
+
+
+@pytest.fixture
+def system_param() -> SystemParam:
+    return SystemParam(role="system", content="test system")
 
 
 @pytest.fixture
@@ -86,8 +92,9 @@ class TestItinerary:
         self,
         itinerary_request: ItineraryRequestMD,
         mock_client: MagicMock,
+        system_param: SystemParam,
     ) -> None:
-        instance = Itinerary(mock_client, itinerary_request)
+        instance = Itinerary(mock_client, itinerary_request, system_param)
 
         with (
             mock_web_search(results="Search results") as mock_search,
@@ -104,8 +111,9 @@ class TestItinerary:
         self,
         itinerary_request: ItineraryRequestMD,
         mock_client: MagicMock,
+        system_param: SystemParam,
     ) -> None:
-        instance = Itinerary(mock_client, itinerary_request)
+        instance = Itinerary(mock_client, itinerary_request, system_param)
 
         with (
             mock_web_search(results=""),
@@ -126,8 +134,9 @@ class TestItinerary:
         self,
         itinerary_request: ItineraryRequestMD,
         mock_client: MagicMock,
+        system_param: SystemParam,
     ) -> None:
-        instance = Itinerary(mock_client, itinerary_request)
+        instance = Itinerary(mock_client, itinerary_request, system_param)
 
         with (
             mock_web_search(results="Search results"),

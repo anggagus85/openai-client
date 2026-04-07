@@ -4,31 +4,26 @@ from datetime import datetime
 from logging import getLogger
 from pathlib import Path
 
-from openai_client.client import OpenAIClient
+from openai_client.client import MistralAI, OpenAIClient
 from openai_client.configs import WHATSAPP_NUMBER
 from openai_client.schemas.ai import ItineraryRequestMD
 from openai_client.services.web_search import WebSearch
-from openai_client.types import ListParams, SystemParam, UserParam
+from openai_client.types import ListParams, MistralParams, MistralSystem, SystemParam, UserParam
 from openai_client.utils import clean_markdown, markdown_to_whatsapp, save_to_file
 
 logger = getLogger(__name__)
 
 
-def _itinerary_system_message() -> SystemParam:
-    return SystemParam(
-        role="system",
-        content="""
-        You are an expert travel planner specializing in authentic Bali experiences.
-        Use the latest search results to provide current, accurate information.
-        """,
-    )
-
-
 class Itinerary:
-    def __init__(self, client: OpenAIClient, itinerary_req: ItineraryRequestMD) -> None:
+    def __init__(
+        self,
+        client: OpenAIClient | MistralAI,
+        itinerary_req: ItineraryRequestMD,
+        system_message: SystemParam | MistralSystem,
+    ) -> None:
         self._client = client
         self._itinerary_req = itinerary_req
-        self.messages: ListParams = [_itinerary_system_message()]
+        self.messages: ListParams | MistralParams = [system_message]
         self._client.messages = self.messages
 
     def _topics(self) -> str:

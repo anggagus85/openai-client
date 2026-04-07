@@ -11,8 +11,8 @@ from openai_client.services.chatbot import (
     _SKIP_PATTERNS,
     _TOURISM_KEYWORDS,
     Chatbot,
-    _chat_system_message,
 )
+from openai_client.services.prompts import system_message
 
 
 @pytest.fixture
@@ -83,17 +83,17 @@ class TestBuildSearchContextMessage:
 
 class TestSystemMessage:
     def test_returns_openai_chat_message(self) -> None:
-        msg = _chat_system_message()
+        msg = system_message()
         assert msg.role == "system"
         assert "Made" in msg.content
         assert "BaliBlissed" in msg.content
 
     def test_contains_personality(self) -> None:
-        msg = _chat_system_message()
+        msg = system_message()
         assert "personality" in msg.content.lower()
 
     def test_contains_boundaries(self) -> None:
-        msg = _chat_system_message()
+        msg = system_message()
         assert "boundaries" in msg.content.lower()
 
 

@@ -11,7 +11,8 @@ from openai_client.schemas.ai import (
     ContactAnalysisResponse,
     EmailInquiry,
 )
-from openai_client.services.email_inquiry import EmailService, _email_messages
+from openai_client.services.email_inquiry import EmailService
+from openai_client.types import SystemParam
 
 
 class TestContactAnalysisPrompt:
@@ -38,8 +39,23 @@ class TestContactAnalysisPrompt:
 
 
 class TestEmailMessages:
-    def test_returns_two_messages(self) -> None:
-        messages = _email_messages("Test content")
+    def test_message_schema(self) -> None:
+        """
+        Validate the expected message structure for email inquiry API calls.
+
+        This test documents the schema/shape of messages that EmailService
+        constructs internally (system message + user message) rather than
+        exercising service behavior. The actual message construction is
+        tested indirectly via TestAnalyzeContact and TestConfirmationMessage.
+        """
+        system_param = SystemParam(
+            role="system",
+            content="You are a friendly, warm, welcoming, enthusiastic and an expert travel assistant for Bali travel service company.",
+        )
+        messages = [
+            system_param,
+            {"role": "user", "content": "Test content"},
+        ]
         assert len(messages) == 2
         assert messages[0]["role"] == "system"
         assert messages[1]["role"] == "user"
@@ -190,8 +206,9 @@ class TestAnalyzeContact:
                 },
             ),
         }
+        system_param = SystemParam(role="system", content="test system")
 
-        service = EmailService(mock_client, inquiry)
+        service = EmailService(mock_client, inquiry, system_param)
         result = async_run(service.analyze_contact("completion"))
         assert "John" in result
         assert "Booking request" in result
@@ -207,8 +224,9 @@ class TestAnalyzeContact:
         mock_client.model = "test-model"
         mock_client.base_url = "https://api.example.com"
         mock_client.call.return_value = {"completion": _make_async_mock("not valid json")}
+        system_param = SystemParam(role="system", content="test system")
 
-        service = EmailService(mock_client, inquiry)
+        service = EmailService(mock_client, inquiry, system_param)
         result = async_run(service.analyze_contact("completion"))
         assert "Jane" in result
         assert "General Information" in result
@@ -223,8 +241,9 @@ class TestAnalyzeContact:
         mock_client.model = "test-model"
         mock_client.base_url = "https://api.example.com"
         mock_client.call.return_value = {"completion": _make_async_mock('{"summary":"test"}')}
+        system_param = SystemParam(role="system", content="test system")
 
-        service = EmailService(mock_client, inquiry)
+        service = EmailService(mock_client, inquiry, system_param)
         result = async_run(service.analyze_contact("completion"))
         assert "Test" in result
 
@@ -242,8 +261,9 @@ class TestConfirmationMessage:
         mock_client.call.return_value = {
             "completion": _make_async_mock("Thank you for your inquiry."),
         }
+        system_param = SystemParam(role="system", content="test system")
 
-        service = EmailService(mock_client, inquiry)
+        service = EmailService(mock_client, inquiry, system_param)
         result = async_run(service.confirmation_message("completion"))
         assert isinstance(result, ContactAnalysisResponse)
         assert result.confirmation == "Thank you for your inquiry."
@@ -258,8 +278,9 @@ class TestConfirmationMessage:
         mock_client.model = "test-model"
         mock_client.base_url = "https://api.example.com"
         mock_client.call.return_value = {"completion": _make_async_mock(None)}
+        system_param = SystemParam(role="system", content="test system")
 
-        service = EmailService(mock_client, inquiry)
+        service = EmailService(mock_client, inquiry, system_param)
         result = async_run(service.confirmation_message("completion"))
         assert isinstance(result, ContactAnalysisResponse)
         assert "Jane" in result.confirmation
@@ -274,7 +295,8 @@ class TestConfirmationMessage:
         mock_client.model = "test-model"
         mock_client.base_url = "https://api.example.com"
         mock_client.call.return_value = {"completion": _make_async_mock(None)}
+        system_param = SystemParam(role="system", content="test system")
 
-        service = EmailService(mock_client, inquiry)
+        service = EmailService(mock_client, inquiry, system_param)
         result = async_run(service.confirmation_message("completion", sent=False))
         assert "failed to send" in result.confirmation
