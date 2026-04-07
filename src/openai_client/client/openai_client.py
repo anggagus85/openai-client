@@ -210,21 +210,21 @@ class OpenAIClient(AsyncOpenAI):
                 stream=True,
             )
 
-        accumulated = ""
-        async for chunk in stream:
-            if not chunk.choices:
-                continue
-            if chunk.choices[0].finish_reason:
-                break
+            accumulated = ""
+            async for chunk in stream:
+                if not chunk.choices:
+                    continue
+                if chunk.choices[0].finish_reason:
+                    break
 
-            if (choices := chunk.choices) and (content := choices[0].delta.content):
-                accumulated += content
-                yield content
+                if (choices := chunk.choices) and (content := choices[0].delta.content):
+                    accumulated += content
+                    yield content
 
-        if accumulated:
-            self._append_assistant_message(accumulated)
-        else:
-            yield None
+            if accumulated:
+                self._append_assistant_message(accumulated)
+            else:
+                yield None
 
     def _append_assistant_message(self, content: str) -> None:
         assistant_param = OpenAIChat(role="assistant", content=content)
