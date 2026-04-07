@@ -12,7 +12,14 @@ from rich import print as rprint
 from openai_client.client import MistralAI, OpenAIClient
 from openai_client.schemas.ai import OpenAIChat
 from openai_client.services.web_search import WebSearch
-from openai_client.types import ListParams, MistralParams, MistralSystem, SystemParam, UserParam
+from openai_client.types import (
+    ListParams,
+    MistralParams,
+    MistralSystem,
+    MistralUser,
+    SystemParam,
+    UserParam,
+)
 
 logger = getLogger(__name__)
 
@@ -335,11 +342,13 @@ class Chatbot:
         await self._ask(method)
 
     def _append_user_message(self, question: str) -> None:
-        user_param = OpenAIChat(
-            role="user",
-            content=question.strip(),
-        )
-        self._messages.append(UserParam(**user_param.model_dump()))
+        user_param = OpenAIChat(role="user", content=question.strip()).model_dump()
+
+        if isinstance(self._client, OpenAIClient):
+            self._messages.append(UserParam(**user_param))
+        else:
+            self._messages.append(MistralUser(**user_param))
+
         self._client.messages = self._messages
 
     async def _ask(self, method: str) -> None:

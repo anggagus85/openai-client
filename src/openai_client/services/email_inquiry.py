@@ -4,6 +4,7 @@ from datetime import datetime
 from html import escape
 from json import JSONDecodeError
 from logging import getLogger
+from textwrap import dedent
 
 from pydantic import ValidationError
 
@@ -29,27 +30,26 @@ class EmailService:
         """Create a body for the email with professional styling."""
         request = self._inquiry
         # Build the inquiry details section
-        inquiry_details = f"""
+        inquiry_details = dedent(f"""
         <div class="info-box" style="text-align: left;">
             <p style="margin: 0 0 12px 0;"><strong>Name:</strong> {escape(request.name)}</p>
             <p style="margin: 0 0 12px 0;"><strong>Email:</strong> <a href="mailto:{escape(request.email)}" style="color: #1a2a6c;">{escape(request.email)}</a></p>
         </div>
-        """
+        """).strip()
 
         # Build the message section
-        message_section = f"""
+        message_section = dedent(f"""
         <div class="info-box" style="text-align: left; margin-top: 24px;">
             <h3 style="color: #1a2a6c; font-size: 18px; margin: 0 0 12px 0;">Message:</h3>
             <p style="margin: 0; white-space: pre-wrap; color: #666666;">{escape(request.message)}</p>
         </div>
-        """
+        """).strip()
 
-        keywords_str = (
-            ", ".join(analysis.keywords)
-            if isinstance(analysis.keywords, (list, tuple))
-            else str(analysis.keywords or "")
-        )
-        analysis_items = f"""
+        keywords_str = str(analysis.keywords or "")
+        if isinstance(analysis.keywords, (list, tuple)):
+            keywords_str = ", ".join(analysis.keywords)
+
+        analysis_items = dedent(f"""
         <div class="info-box" style="text-align: left; margin-top: 24px;">
             <h3 style="color: #1a2a6c; font-size: 18px; margin: 0 0 16px 0;">AI Analysis</h3>
             <p style="margin: 0 0 8px 0;"><strong>Summary:</strong> {escape(analysis.summary)}</p>
@@ -59,10 +59,10 @@ class EmailService:
             <p style="margin: 0 0 8px 0;"><strong>Required Action:</strong> {escape(analysis.required_action)}</p>
             <p style="margin: 0;"><strong>Keywords:</strong> {escape(keywords_str)}</p>
         </div>
-        """
+        """).strip()
 
         # Build the complete content
-        content_html = f"""
+        content_html = dedent(f"""
         <div class="content">
             <h1 style="color: #1a2a6c; font-size: 24px; margin: 0 0 8px 0; line-height: 1.3;">New BaliBlissed Inquiry</h1>
             <p style="color: #666666; font-size: 14px; margin: 0 0 24px 0;">You have received a new contact inquiry.</p>
@@ -70,39 +70,38 @@ class EmailService:
             {message_section}
             {analysis_items}
         </div>
-        """
+        """).strip()
 
         # Build header
-        logo_url = (
-            "https://res.cloudinary.com/dusikjnta/image/upload/"
-            "f_auto/q_auto/v1/My%20Brand/bali_blissed_simplified_dhkbvy?_a=BAMAAAhK0"
-        )
-        header_html = f"""
+        logo_url = dedent("""
+        https://res.cloudinary.com/dusikjnta/image/upload/f_auto/q_auto/v1/My%20Brand/bali_blissed_simplified_dhkbvy?_a=BAMAAAhK0
+        """).strip()
+        header_html = dedent(f"""
         <div class="header">
             <img src="{logo_url}" alt="BaliBlissed Logo">
         </div>
-        """
+        """).strip()
 
         # Build footer
         year = datetime.now().year
-        footer_html = f"""
+        footer_html = dedent(f"""
         <div class="footer">
             <p>&copy; {year} BaliBlissed. All rights reserved.</p>
             <p>Your portal to Bali's finest travel experiences.</p>
         </div>
-        """
+        """).strip()
 
         # Build the complete email with base template styles
-        body_content = f"""
+        body_content = dedent(f"""
         <div class="container">
             {header_html}
             {content_html}
             {footer_html}
         </div>
-        """.strip()
+        """).strip()
 
         # Use the same styling approach as EmailTemplate
-        return f"""<!DOCTYPE html>
+        return dedent(f"""<!DOCTYPE html>
     <html lang="en">
     <head>
         <meta charset="UTF-8">
@@ -251,7 +250,7 @@ class EmailService:
         {body_content}
     </body>
     </html>
-    """
+    """).strip()
 
     def _contact_analysis_prompt(self) -> str:
         """

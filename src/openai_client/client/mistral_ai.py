@@ -17,7 +17,7 @@ from openai_client.errors import (
     AppSystemError,
     UnknownError,
 )
-from openai_client.types import MistralAssistant
+from openai_client.types import MistralAssistant, MistralParams
 
 logger = getLogger(__name__)
 
@@ -45,7 +45,7 @@ class MistralAI(Mistral):
         super().__init__(api_key=api_key, timeout_ms=60000)
         self.base_url = base_url
         self._model = model
-        self.messages = []
+        self.messages: MistralParams = []
         self.configs = {"temperature": 0.5, "model": model, "top_p": 1.0}
 
     def __str__(self) -> str:
