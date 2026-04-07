@@ -3,6 +3,7 @@
 from datetime import datetime
 from logging import getLogger
 from pathlib import Path
+from textwrap import dedent
 
 from openai_client.client import MistralAI, OpenAIClient
 from openai_client.configs import WHATSAPP_NUMBER
@@ -39,7 +40,7 @@ class Itinerary:
         # - **2** Daily transportation options (cars, scooters, taxis)
         # - **3** Estimated costs and booking tips
 
-        return f"""
+        return dedent(f"""
         🌅 **DAILY BREAKDOWN** (Provide {duration} full days)
         For each day, use this exact format:
 
@@ -128,7 +129,7 @@ class Itinerary:
         - Emergency contacts including local police, medical, and embassy numbers
         - Practical information details must be in bullet points on a new line
         </requirements>
-        """
+        """).strip()
 
     def _structure(self) -> str:
         """
@@ -140,7 +141,7 @@ class Itinerary:
         duration = self._itinerary_req.duration
         budget = self._itinerary_req.budget
 
-        friendly_note = f"""
+        friendly_note = dedent(f"""
         ## 🌟 A Friendly Note
 
         - This itinerary is a great starting point, but remember that details like opening hours and prices can change.
@@ -150,9 +151,9 @@ class Itinerary:
         <requirements>
         - Friendly note details must be in bullet points on a new line
         </requirements>
-        """
+        """).strip()
 
-        return f"""
+        return dedent(f"""
         <section>
         # 🌴 Here's your {duration}-Days Bali trip Itinerary with {budget} budget 🌴
         ## [Generated Title Here]
@@ -169,7 +170,7 @@ class Itinerary:
         <important_note>
         - Follow header section strictly
         </important_note>
-        """
+        """).strip()
 
     def _prompt(self, search_context: str = "") -> str:
         """
@@ -188,16 +189,17 @@ class Itinerary:
 
         search_block = ""
         if search_context:
-            search_block = f"""
+            search_block = dedent(f"""
         {search_context}
-        """
+        """).strip()
 
         search_rule = ""
         if search_context:
-            search_rule = """
-        - Incorporate current information from the search results where relevant"""
+            search_rule = dedent("""
+        - Incorporate current information from the search results where relevant
+        """).strip()
 
-        return f"""
+        return dedent(f"""
         Create a comprehensive and engaging {duration} day(s) travel itinerary for Bali.
 
         <traveler_profile>
@@ -241,7 +243,7 @@ class Itinerary:
         </formatting_rules>
 
         Create a memorable, practical, and culturally rich Bali itinerary that exceeds expectations!
-        """
+        """).strip()
 
     async def generate(self, method: str) -> None:
         web_search = WebSearch("Searching latest Bali itinerary information with")
