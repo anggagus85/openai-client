@@ -6,7 +6,7 @@ from asyncio import run as async_run
 from unittest.mock import patch
 
 from openai_client.services.chatbot import Chatbot
-from openai_client.types import SystemParam, UserParam
+from openai_client.types import MistralUser, SystemParam, UserParam
 
 
 class TestAppendUserMessage:
@@ -14,15 +14,30 @@ class TestAppendUserMessage:
         chatbot = mock_chatbot
 
         chatbot._append_user_message("  Hello Bali  ")
+        user_mssg = chatbot._messages[1]
+
+        if isinstance(user_mssg, MistralUser):
+            role = user_mssg.role
+            content = user_mssg.content
+        else:
+            role = user_mssg.get("role")
+            content = user_mssg.get("content")
+
         assert len(chatbot._messages) == 2
-        assert chatbot._messages[1]["role"] == "user"
-        assert chatbot._messages[1]["content"] == "Hello Bali"
+        assert role == "user"
+        assert content == "Hello Bali"
 
     def test_strips_whitespace(self, mock_chatbot: Chatbot) -> None:
         chatbot = mock_chatbot
 
         chatbot._append_user_message("   query   ")
-        assert chatbot._messages[1]["content"] == "query"
+
+        user_mssg = chatbot._messages[1]
+        if isinstance(user_mssg, MistralUser):
+            content = user_mssg.content
+        else:
+            content = user_mssg.get("content")
+        assert content == "query"
 
 
 class TestAugmentWithSearch:

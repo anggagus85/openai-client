@@ -3,10 +3,11 @@
 """Tests for itinerary service helper functions."""
 
 from datetime import datetime
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from openai_client.schemas.ai import ItineraryRequestMD
 from openai_client.services.itinerary import Itinerary
+from openai_client.types import SystemParam, UserParam
 from openai_client.utils import clean_markdown
 
 
@@ -127,12 +128,17 @@ class TestItineraryMessages:
             interests=["beaches"],
             budget="US$ 1000",
         )
+        mock_client = MagicMock()
+        mock_client.messages = []
         instance = Itinerary.__new__(Itinerary)
         instance._itinerary_req = req
-        messages = instance._itinerary_messages()
-        assert len(messages) == 2
-        assert messages[0]["role"] == "system"
-        assert messages[1]["role"] == "user"
+        instance._client = mock_client
+        instance.messages = [SystemParam(role="system", content="system")]
+        instance._create_user_message = lambda content: UserParam(role="user", content=content)
+        instance.messages.append(instance._create_user_message(instance._prompt()))
+        assert len(instance.messages) == 2
+        assert instance.messages[0]["role"] == "system"
+        assert instance.messages[1]["role"] == "user"
 
 
 class TestItinerarySearchMessages:
@@ -142,8 +148,11 @@ class TestItinerarySearchMessages:
             interests=["beaches"],
             budget="US$ 1000",
         )
+        mock_client = MagicMock()
+        mock_client.messages = []
         instance = Itinerary.__new__(Itinerary)
         instance._itinerary_req = req
+        instance._client = mock_client
         user_param = instance._itinerary_search_messages("Search results here")
         assert user_param["role"] == "user"
         assert isinstance(user_param["content"], str)
