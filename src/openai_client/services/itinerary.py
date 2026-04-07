@@ -9,7 +9,14 @@ from openai_client.client import MistralAI, OpenAIClient
 from openai_client.configs import WHATSAPP_NUMBER
 from openai_client.schemas.ai import ItineraryRequestMD
 from openai_client.services.web_search import WebSearch
-from openai_client.types import ListParams, MistralParams, MistralSystem, SystemParam, UserParam
+from openai_client.types import (
+    ListParams,
+    MistralParams,
+    MistralSystem,
+    MistralUser,
+    SystemParam,
+    UserParam,
+)
 from openai_client.utils import clean_markdown, markdown_to_whatsapp, save_to_file
 
 logger = getLogger(__name__)
@@ -254,8 +261,8 @@ class Itinerary:
             return
 
         logger.info("Generating itinerary with %s", self._client)
-        user_param = self._itinerary_search_messages(results)
-        self._client.messages.append(user_param)
+        user_mssg = self._itinerary_search_messages(results)
+        self._client.messages.append(user_mssg)
 
         await self._generate_and_save(method)
 
@@ -273,7 +280,7 @@ class Itinerary:
 
     def _itinerary_search_messages(self, search_results: str) -> UserParam:
         # Keep this function focused on packaging web results; _prompt builds the shared body.
-        search_context = f"""
+        search_context = dedent(f"""
         <latest_web_search_results>
         The following is current information about Bali retrieved from web search:
 
@@ -281,26 +288,20 @@ class Itinerary:
 
         Use this information to ensure your itinerary recommendations are up-to-date and relevant.
         </latest_web_search_results>
-        """
+        """).strip()
 
-        return UserParam(role="user", content=self._prompt(search_context=search_context))
+        return self._create_user_message(self._prompt(search_context=search_context))
 
-    def _itinerary_messages(self) -> ListParams:
-        return [
-            SystemParam(
-                role="system",
-                content="You are an expert travel planner specializing in authentic Bali experiences.",
-            ),
-            UserParam(
-                role="user",
-                content=self._prompt(),
-            ),
-        ]
+    def _create_user_message(self, content: str) -> UserParam | MistralUser:
+        if isinstance(self._client, MistralAI):
+            return MistralUser(role="user", content=content)
+        return UserParam(role="user", content=content)
 
     async def _plain_itinerary(self, method: str) -> None:
         logger.info("Generating itinerary with %s", self._client)
-        messages = self._itinerary_messages()
-        self._client.messages = messages
+        user_mssg = self._create_user_message(self._prompt())
+        self._client.messages.append(user_mssg)
+
         await self._generate_and_save(method)
 
     async def _generate_and_save(self, method: str) -> None:
