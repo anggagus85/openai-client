@@ -143,12 +143,12 @@ def main() -> None:
         "bytez": {
             "api_key": settings.BYTEZ_API_KEY,
             "base_url": "https://api.bytez.com/models/v2/openai/v1",
-            "model": "google/gemma-4-E2B-it",
+            "model": "Qwen/Qwen3-8B",
         },
         "nvidia": {
             "api_key": settings.NVIDIA_API_KEY,
             "base_url": "https://integrate.api.nvidia.com/v1",
-            "model": "mistralai/mistral-large-3-675b-instruct-2512",
+            "model": "stepfun-ai/step-3.5-flash",
         },
         "mistral": {
             "api_key": settings.MISTRAL_API_KEY,
@@ -168,9 +168,9 @@ def main() -> None:
     # Mistral AI
     # ------------
 
-    mistral = MistralAI(**kwargs["mistral"])
-    service = [_mistral_chat, _mistral_itinerary, _mistral_email_inquiry]
-    async_run(_mistrals(mistral, service[1], Methods.COMPLETION))
+    # mistral = MistralAI(**kwargs["mistral"])
+    # service = [_mistral_chat, _mistral_itinerary, _mistral_email_inquiry]
+    # async_run(_mistrals(mistral, service[1], Methods.COMPLETION))
 
 
 if __name__ == "__main__":

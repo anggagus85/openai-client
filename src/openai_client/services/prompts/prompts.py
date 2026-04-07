@@ -36,12 +36,12 @@ def system_message() -> OpenAIChat:
     return OpenAIChat(role="system", content=SYSTEM_MESSAGE)
 
 
-ITINERARY_SYSTEM_MESSAGE = """
+ITINERARY_SYSTEM_MESSAGE = dedent("""
     You are an expert travel planner specializing in authentic Bali experiences.
     Use the latest search results to provide current, accurate information.
-"""
+""").strip()
 
 
-EMAIL_SYSTEM_MESSAGE = """
+EMAIL_SYSTEM_MESSAGE = dedent("""
     You are a friendly, warm, welcoming, enthusiastic and an expert travel assistant for Bali travel service company.
-"""
+""").strip()
