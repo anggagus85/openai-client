@@ -1,4 +1,5 @@
 from asyncio import run as async_run
+from collections.abc import Awaitable, Callable
 from enum import StrEnum
 from logging import ERROR, basicConfig, getLogger
 from pathlib import Path
@@ -59,7 +60,7 @@ inquiry = EmailInquiry(
 )
 
 
-async def _do_chat(client: OpenAIClient, method: str) -> None:
+async def _openai_chat(client: OpenAIClient, method: str) -> None:
     system_param = SystemParam(**system_message().model_dump())
     await Chatbot(client, system_param=system_param).run(method)
 
@@ -70,13 +71,24 @@ async def _openai_itinerary(client: OpenAIClient, method: str) -> None:
     await Itinerary(client, itinerary_req, system_param).generate(method)
 
 
-async def _email_inquiry(client: OpenAIClient, method: str) -> None:
+async def _openai_email_inquiry(client: OpenAIClient, method: str) -> None:
     system_param = SystemParam(role="system", content=EMAIL_SYSTEM_MESSAGE)
     service = EmailService(client, inquiry, system_param)
     body = await service.analyze_contact(method)
     save_to_file(body, Path.cwd() / "email_inquiry.html")
     confirmation = await service.confirmation_message(method)
     rprint(f"[b i green]confirmation :[/b i green]\n\n{confirmation.confirmation}")
+
+
+async def _openai_services(
+    client: OpenAIClient,
+    service: Callable[[OpenAIClient, str], Awaitable[None]],
+    method: str,
+) -> None:
+    if service is _openai_itinerary:
+        client.configs["temperature"] = 0
+
+    await service(client, method)
 
 
 # ------------
@@ -102,6 +114,17 @@ async def _mistral_email_inquiry(mistral: MistralAI, method: str) -> None:
     save_to_file(body, Path.cwd() / "email_inquiry.html")
     confirmation = await service.confirmation_message(method)
     rprint(f"[b i green]confirmation :[/b i green]\n\n{confirmation.confirmation}")
+
+
+async def _mistrals(
+    client: MistralAI,
+    service: Callable[[MistralAI, str], Awaitable[None]],
+    method: str,
+) -> None:
+    if service is _mistral_itinerary:
+        client.configs["temperature"] = 0
+
+    await service(client, method)
 
 
 def main() -> None:
@@ -130,16 +153,15 @@ def main() -> None:
         "mistral": {
             "api_key": settings.MISTRAL_API_KEY,
             "base_url": "https://api.mistral.ai",
-            # "model": "mistral-large-latest",
+            "model": "mistral-large-latest",
             # "model": "devstral-2512",
             # "model": "mistral-medium-latest",
-            "model": "mistral-small-2506",
+            # "model": "mistral-small-2506",
         },
     }
-    # client = OpenAIClient(**kwargs["inception"])
-    # async_run(_do_chat(client, Methods.STREAM))  # break with ctrl+d
-    # async_run(_openai_itinerary(client, Methods.COMPLETION))
-    # async_run(_email_inquiry(client, Methods.COMPLETION))
+    client = OpenAIClient(**kwargs["inception"])
+    service = [_openai_chat, _openai_itinerary, _openai_email_inquiry]
+    async_run(_openai_services(client, service[1], Methods.COMPLETION))
     # client.list_models("openrouter")
 
     # ------------
@@ -147,10 +169,8 @@ def main() -> None:
     # ------------
 
     mistral = MistralAI(**kwargs["mistral"])
-    # async_run(_mistral_chat(mistral, Methods.STREAM))
-    async_run(_mistral_itinerary(mistral, Methods.COMPLETION))
-    # async_run(_mistral_email_inquiry(mistral, Methods.COMPLETION))
-    # async_run(mistral.list_models())
+    service = [_mistral_chat, _mistral_itinerary, _mistral_email_inquiry]
+    async_run(_mistrals(mistral, service[1], Methods.COMPLETION))
 
 
 if __name__ == "__main__":
