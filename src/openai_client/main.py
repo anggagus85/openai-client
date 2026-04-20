@@ -140,11 +140,6 @@ def main() -> None:
             "base_url": "https://openrouter.ai/api/v1",
             "model": "stepfun/step-3.5-flash:free",
         },
-        "bytez": {
-            "api_key": settings.BYTEZ_API_KEY,
-            "base_url": "https://api.bytez.com/models/v2/openai/v1",
-            "model": "Qwen/Qwen3-8B",
-        },
         "nvidia": {
             "api_key": settings.NVIDIA_API_KEY,
             "base_url": "https://integrate.api.nvidia.com/v1",
@@ -158,8 +153,13 @@ def main() -> None:
             # "model": "mistral-medium-latest",
             # "model": "mistral-small-2506",
         },
+        "fireworks": {
+            "api_key": settings.FIREWORKS_API_KEY,
+            "base_url": "https://api.fireworks.ai/inference/v1",
+            "model": "accounts/fireworks/models/minimax-m2p7",
+        },
     }
-    client = OpenAIClient(**kwargs["inception"])
+    client = OpenAIClient(**kwargs["fireworks"])
     service = [_openai_chat, _openai_itinerary, _openai_email_inquiry]
     async_run(_openai_services(client, service[1], Methods.COMPLETION))
     # client.list_models("openrouter")
