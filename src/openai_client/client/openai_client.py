@@ -1,6 +1,6 @@
 from asyncio import to_thread
 from collections.abc import AsyncGenerator, AsyncIterator, Callable
-from contextlib import asynccontextmanager
+from contextlib import aclosing, asynccontextmanager
 from json import dumps, loads
 from logging import getLogger
 from pathlib import Path
@@ -169,19 +169,21 @@ class OpenAIClient(AsyncOpenAI):
         chunks: AsyncIterator[str | None],
         *,
         is_bytez: bool = False,
-    ) -> None:
+    ) -> str:
         buffer = ""
         started = False
         skipping_leading = False
+        output = ""
 
         async for token in chunks:
             if token is None:
-                return
+                return output
 
             current_token: str = token
 
             if not is_bytez:
                 rprint(current_token, end="", flush=True)
+                output += current_token
                 continue
 
             if not started:
@@ -199,8 +201,10 @@ class OpenAIClient(AsyncOpenAI):
                 skipping_leading = False
 
             rprint(current_token, end="", flush=True)
+            output += current_token
 
         print()
+        return output
 
     async def _stream_chunk(self) -> AsyncGenerator[str | None]:
         async with _handle_api_call():
@@ -211,15 +215,24 @@ class OpenAIClient(AsyncOpenAI):
             )
 
             accumulated = ""
-            async for chunk in stream:
-                if not chunk.choices:
-                    continue
-                if chunk.choices[0].finish_reason:
-                    break
+            finished = False
+            # Drain the stream after the finish chunk instead of breaking out of it:
+            # abandoning the response mid-flight leaves the HTTP generator to be closed
+            # reentrantly during loop shutdown ("aclose(): asynchronous generator is
+            # already running") and the connection is not released.
+            async with aclosing(stream):
+                async for chunk in stream:
+                    if not chunk.choices:
+                        continue
+                    if chunk.choices[0].finish_reason:
+                        finished = True
+                        continue
+                    if finished:
+                        continue
 
-                if (choices := chunk.choices) and (content := choices[0].delta.content):
-                    accumulated += content
-                    yield content
+                    if content := chunk.choices[0].delta.content:
+                        accumulated += content
+                        yield content
 
             if accumulated:
                 self._append_assistant_message(accumulated)
