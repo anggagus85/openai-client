@@ -3,6 +3,7 @@
 """Advanced tests for caller module - _completion, _call_bytez, _iter_chunk, _stream_chunk, _append_assistant_message."""
 
 from collections.abc import AsyncIterator
+from typing import cast
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -15,11 +16,18 @@ from openai_client.errors import ApiError, AppSystemError
 def _make_mock_client() -> OpenAIClient:
     instance = OpenAIClient.__new__(OpenAIClient)
     instance.model = "test-model"
+    # `AsyncOpenAI.base_url`'s setter reads `workload_identity`, which __init__ normally sets.
+    instance.workload_identity = None
     instance.base_url = "https://api.example.com"
     instance.messages = []
     instance.configs = {"temperature": 0.5, "model": "test-model", "top_p": 1.0}
     object.__setattr__(instance, "chat", AsyncMock())
     return instance
+
+
+def _mock_chat(instance: OpenAIClient) -> AsyncMock:
+    # `chat` is typed as the real Chat resource; the helper above swaps in an AsyncMock.
+    return cast(AsyncMock, instance.chat)
 
 
 class TestCallCompletion:
@@ -28,7 +36,7 @@ class TestCallCompletion:
         mock_completion = MagicMock()
         mock_completion.choices = [MagicMock()]
         mock_completion.choices[0].message.content = "Hello, world!"
-        instance.chat.completions.create.return_value = mock_completion
+        _mock_chat(instance).completions.create.return_value = mock_completion
 
         result = await instance._completion(append=False)
         assert result == "Hello, world!"
@@ -37,7 +45,7 @@ class TestCallCompletion:
         instance = _make_mock_client()
         mock_completion = MagicMock()
         mock_completion.choices = []
-        instance.chat.completions.create.return_value = mock_completion
+        _mock_chat(instance).completions.create.return_value = mock_completion
 
         result = await instance._completion(append=False)
         assert result == ""
@@ -47,7 +55,7 @@ class TestCallCompletion:
         mock_completion = MagicMock()
         mock_completion.choices = [MagicMock()]
         mock_completion.choices[0].message.content = "Answer"
-        instance.chat.completions.create.return_value = mock_completion
+        _mock_chat(instance).completions.create.return_value = mock_completion
 
         await instance._completion(append=True)
         assert len(instance.messages) == 1
@@ -59,7 +67,7 @@ class TestCallCompletion:
         mock_completion = MagicMock()
         mock_completion.choices = [MagicMock()]
         mock_completion.choices[0].message.content = "<think> reasoning </think> actual answer"
-        instance.chat.completions.create.return_value = mock_completion
+        _mock_chat(instance).completions.create.return_value = mock_completion
 
         result = await instance._completion(append=False)
         assert result == "actual answer"
@@ -69,7 +77,7 @@ class TestCallCompletion:
         mock_completion = MagicMock()
         mock_completion.choices = [MagicMock()]
         mock_completion.choices[0].message.content = None
-        instance.chat.completions.create.return_value = mock_completion
+        _mock_chat(instance).completions.create.return_value = mock_completion
 
         result = await instance._completion(append=False)
         assert result is None
@@ -222,7 +230,7 @@ class TestStreamChunk:
                 yield chunk
 
         instance = _make_mock_client()
-        instance.chat.completions.create.return_value = mock_stream()
+        _mock_chat(instance).completions.create.return_value = mock_stream()
 
         results = [x async for x in instance._stream_chunk()]
         assert results == ["Hello", " World"]
@@ -237,7 +245,7 @@ class TestStreamChunk:
             yield mock_chunk
 
         instance = _make_mock_client()
-        instance.chat.completions.create.return_value = mock_stream()
+        _mock_chat(instance).completions.create.return_value = mock_stream()
 
         async for _ in instance._stream_chunk():
             pass
@@ -250,7 +258,7 @@ class TestStreamChunk:
             yield
 
         instance = _make_mock_client()
-        instance.chat.completions.create.return_value = mock_stream()
+        _mock_chat(instance).completions.create.return_value = mock_stream()
 
         results = [x async for x in instance._stream_chunk()]
         assert results == [None]
@@ -271,7 +279,7 @@ class TestStreamChunk:
                 yield chunk
 
         instance = _make_mock_client()
-        instance.chat.completions.create.return_value = mock_stream()
+        _mock_chat(instance).completions.create.return_value = mock_stream()
 
         results = [x async for x in instance._stream_chunk()]
         assert results == ["Hello"]
