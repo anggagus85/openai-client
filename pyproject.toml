@@ -5,7 +5,7 @@ name = "openai-client"
 version = "0.1.0"
 description = "OpenAI-Client is a client for OpenAI API that can be used for a variety of tasks."
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.14"
 dependencies = [
   "bytez>=3.0.1",
   "disposable-email-domains>=0.0.169",
