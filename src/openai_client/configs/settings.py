@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     BRAVE_API_KEY: str
     MISTRAL_API_KEY: str
     FIREWORKS_API_KEY: str
+    ATMOROUTER_API_KEY: str
 
     AI_REQUEST_TIMEOUT: int = 60  # seconds
     AI_MAX_RETRIES: int = 2

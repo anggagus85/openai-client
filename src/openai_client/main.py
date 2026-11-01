@@ -21,7 +21,7 @@ from openai_client.typings import MistralSystem, SystemParam
 from openai_client.utils import save_to_file
 
 basicConfig(
-    level="NOTSET",
+    level="INFO",
     format="%(message)s",
     datefmt="%X",
     handlers=[RichHandler(rich_tracebacks=True)],
@@ -130,6 +130,13 @@ async def _mistrals(
 def main() -> None:
 
     kwargs = {
+        "atmorouter": {
+            "api_key": settings.ATMOROUTER_API_KEY,
+            "base_url": "https://atmorouter.dev/v1",
+            "model": "ali/deepseek-v4.1-flash",
+            # "model": "alicn/deepseek-v4.1-flash-1017",
+            # "model": "atmo/deepseek-v4.1-flash",
+        },
         "inception": {
             "api_key": settings.INCEPTION_API_KEY,
             "base_url": "https://api.inceptionlabs.ai/v1",
@@ -159,9 +166,9 @@ def main() -> None:
             "model": "accounts/fireworks/models/minimax-m2p7",
         },
     }
-    client = OpenAIClient(**kwargs["fireworks"])
+    client = OpenAIClient(**kwargs["atmorouter"])
     service = [_openai_chat, _openai_itinerary, _openai_email_inquiry]
-    async_run(_openai_services(client, service[1], Methods.COMPLETION))
+    async_run(_openai_services(client, service[0], Methods.COMPLETION))
     # client.list_models("openrouter")
 
     # ------------
