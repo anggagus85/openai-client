@@ -3,7 +3,7 @@
 import pytest
 
 from openai_client.services.chatbot import Chatbot
-from openai_client.types import SystemParam
+from openai_client.typings import SystemParam
 
 
 @pytest.fixture

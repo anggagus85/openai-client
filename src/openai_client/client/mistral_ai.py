@@ -17,7 +17,7 @@ from openai_client.errors import (
     AppSystemError,
     UnknownError,
 )
-from openai_client.types import MistralAssistant, MistralParams
+from openai_client.typings import MistralAssistant, MistralParams
 
 logger = getLogger(__name__)
 

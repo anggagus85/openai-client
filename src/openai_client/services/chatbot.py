@@ -12,7 +12,7 @@ from rich import print as rprint
 from openai_client.client import MistralAI, OpenAIClient
 from openai_client.schemas.ai import OpenAIChat
 from openai_client.services.web_search import WebSearch
-from openai_client.types import (
+from openai_client.typings import (
     ListParams,
     MistralParams,
     MistralSystem,

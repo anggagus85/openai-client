@@ -17,7 +17,7 @@ from openai_client.services.prompts import (
     ITINERARY_SYSTEM_MESSAGE,
     system_message,
 )
-from openai_client.types import MistralSystem, SystemParam
+from openai_client.typings import MistralSystem, SystemParam
 from openai_client.utils import save_to_file
 
 basicConfig(

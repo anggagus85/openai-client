@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 
 from openai_client.schemas.ai import ItineraryRequestMD
 from openai_client.services.itinerary import Itinerary
-from openai_client.types import SystemParam, UserParam
+from openai_client.typings import SystemParam, UserParam
 from openai_client.utils import clean_markdown
 
 

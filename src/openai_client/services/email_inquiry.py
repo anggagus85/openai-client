@@ -10,7 +10,7 @@ from pydantic import ValidationError
 
 from openai_client.client import MistralAI, OpenAIClient
 from openai_client.schemas.ai import AnalysisFormat, ContactAnalysisResponse, EmailInquiry
-from openai_client.types import MistralSystem, MistralUser, SystemParam, UserParam
+from openai_client.typings import MistralSystem, MistralUser, SystemParam, UserParam
 
 logger = getLogger(__name__)
 

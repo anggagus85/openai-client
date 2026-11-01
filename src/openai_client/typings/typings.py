@@ -1,4 +1,4 @@
-# src/openai_client/types/types.py
+# src/openai_client/typings/typings.py
 
 from mistralai.client import models
 from openai.types.chat import (

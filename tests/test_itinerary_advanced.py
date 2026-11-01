@@ -13,7 +13,7 @@ import pytest
 
 from openai_client.schemas.ai import ItineraryRequestMD
 from openai_client.services.itinerary import Itinerary
-from openai_client.types import SystemParam
+from openai_client.typings import SystemParam
 
 
 @pytest.fixture

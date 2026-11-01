@@ -1,6 +1,6 @@
-# src/openai_client/types/__init__.py
+# src/openai_client/typings/__init__.py
 
-from .types import (
+from .typings import (
     AssistantParam,
     ListParams,
     MistralAssistant,

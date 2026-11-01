@@ -6,7 +6,7 @@ from asyncio import run as async_run
 from unittest.mock import patch
 
 from openai_client.services.chatbot import Chatbot
-from openai_client.types import MistralUser, SystemParam, UserParam
+from openai_client.typings import MistralUser, SystemParam, UserParam
 
 
 class TestAppendUserMessage:

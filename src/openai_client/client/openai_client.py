@@ -21,7 +21,7 @@ from openai_client.errors import (
     UnknownError,
 )
 from openai_client.schemas.ai import OpenAIChat
-from openai_client.types import AssistantParam, ListParams
+from openai_client.typings import AssistantParam, ListParams
 from openai_client.utils import save_to_file
 
 logger = getLogger(__name__)

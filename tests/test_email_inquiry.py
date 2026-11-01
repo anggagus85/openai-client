@@ -12,7 +12,7 @@ from openai_client.schemas.ai import (
     EmailInquiry,
 )
 from openai_client.services.email_inquiry import EmailService
-from openai_client.types import SystemParam
+from openai_client.typings import SystemParam
 
 
 class TestContactAnalysisPrompt:
