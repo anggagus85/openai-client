@@ -353,11 +353,6 @@ class Chatbot:
 
     async def _ask(self, method: str) -> None:
         logger.info("Running chatbot with %s", self._client)
-        is_bytez = "api.bytez.com" in str(self._client.base_url)
-
-        bytez_kwargs = {}
-        if isinstance(self._client, OpenAIClient):
-            bytez_kwargs = {"is_bytez": is_bytez}
 
         with suppress(*IGNORED):
             while True:
@@ -368,7 +363,7 @@ class Chatbot:
                 search_ctx_idx = await self._augment_with_search()
 
                 rprint("\n[b i green]AI:")
-                answer = await self._client.call(append=False, **bytez_kwargs)[method]()
+                answer = await self._client.call(append=False)[method]()
 
                 # Remove temporary search context from history
                 if search_ctx_idx is not None:

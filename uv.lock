@@ -25,18 +25,6 @@ wheels = [
 ]
 
 [[package]]
-name = "bytez"
-version = "3.0.1"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "requests" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/a4/72/a15b05fa5656f5fd321bb66ecb80ba50300a1081f06c0bda09271deb9f7f/bytez-3.0.1.tar.gz", hash = "sha256:88e547eb074a051e8f6fbcb4d79d7af2d2c715245e872bbfa8dcdb205f406d7f", size = 6379, upload-time = "2025-11-20T21:40:00.596Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/94/ca/ac09c265e2fbcbee3bdb287f8fc34d296a00e61b7828a8a7f42e22bed656/bytez-3.0.1-py3-none-any.whl", hash = "sha256:aba0c0ded17719e9b285e1a2aad94e456aa5c0fa507046a52efa1305a6d8c196", size = 9738, upload-time = "2025-11-20T21:39:59.389Z" },
-]
-
-[[package]]
 name = "certifi"
 version = "2026.10.23"
 source = { registry = "https://pypi.org/simple" }
@@ -589,7 +577,6 @@ name = "openai-client"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
-    { name = "bytez" },
     { name = "disposable-email-domains" },
     { name = "exa-py" },
     { name = "httpx2" },
@@ -614,7 +601,6 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "bytez", specifier = ">=3.0.1" },
     { name = "disposable-email-domains", specifier = ">=0.0.169" },
     { name = "exa-py", specifier = ">=2.11.0" },
     { name = "httpx2", specifier = ">=2.16.0" },

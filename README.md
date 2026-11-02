@@ -8,7 +8,7 @@ A Bali tourism AI assistant built on top of the OpenAI Python SDK. Provides an i
 - **Itinerary Generation** -- Generates detailed multi-day Bali trip plans in Markdown format, including daily breakdowns, accommodations, dining, cultural experiences, and budget guidance.
 - **Email Inquiry Analysis** -- Analyzes incoming email inquiries using AI, classifies them by category and urgency, and generates responsive HTML emails with AI-suggested replies.
 - **Web Search Augmentation** -- Integrates Exa and Brave search APIs to provide real-time, up-to-date information in chatbot and itinerary responses.
-- **Multi-Provider Support** -- Works with multiple AI providers through OpenAI-compatible endpoints: OpenRouter, Inception (Mercury), Bytez, and NVIDIA.
+- **Multi-Provider Support** -- Works with multiple AI providers through OpenAI-compatible endpoints: OpenRouter, Inception (Mercury), and NVIDIA.
 
 ## Project Structure
 
@@ -33,7 +33,7 @@ src/openai_client/
 |   |-- email_inquiry.py     # Email analysis and HTML generation
 |   |-- search.py            # Exa and Brave search clients
 |   `-- caller/
-|       `-- caller.py        # Unified API caller (completion/bytez/stream)
+|       `-- caller.py        # Unified API caller (completion/stream)
 |-- types/
 |   `-- types.py             # Type aliases
 `-- utils/
@@ -64,7 +64,6 @@ Create a `.env` file in the project root with the following API keys:
 # AI Provider Keys (at least one required)
 INCEPTION_API_KEY=your_inception_api_key
 OPENROUTER_API_KEY=your_openrouter_api_key
-BYTEZ_API_KEY=your_bytez_api_key
 NVIDIA_API_KEY=your_nvidia_api_key
 
 # Search Provider Keys (for web-augmented responses)
@@ -97,12 +96,11 @@ The entry point (`main.py`) is configured to launch one of three features. Edit 
 
 ### API Call Methods
 
-Each feature supports three calling methods:
+Each feature supports two calling methods:
 
 | Method | Description |
 | --- | --- |
 | `"completion"` | Standard Async OpenAI chat completion |
-| `"bytez"` | Bytez API call |
 | `"stream"` | Streaming response with real-time token output |
 
 ## AI Providers
@@ -113,7 +111,6 @@ The client wraps the OpenAI SDK and connects to multiple providers via OpenAI-co
 | --- | --- | --- |
 | Inception | `https://api.inceptionlabs.ai/v1` | `mercury-coder-small-beta` |
 | OpenRouter | `https://openrouter.ai/api/v1` | `nvidia/nemotron-nano-9b-v2:free` |
-| Bytez | Bytez SDK | `Qwen/Qwen3-8B` |
 | NVIDIA | `https://integrate.api.nvidia.com/v1` | `mistralai/mistral-large-2-instruct` |
 
 ## Development
@@ -140,7 +137,6 @@ uv run pyrefly check
 | `pydantic[email]` | Data validation and email validation |
 | `rich` | Terminal formatting and logging |
 | `tenacity` | Retry logic with exponential backoff |
-| `bytez` | Bytez AI model API client |
 | `httpx` | HTTP client for search APIs |
 | `exa-py` | Exa search API |
 | `mdformat` | Markdown formatting |

@@ -41,11 +41,7 @@ install()
 
 
 class Methods(StrEnum):
-    # Notes:
-    # method = "completion" or "stream" ->  all kwargs keys are valid
-    # method = "bytez" ->  only kwargs["bytez"] is valid
     COMPLETION = "completion"
-    BYTEZ = "bytez"
     STREAM = "stream"
 
 

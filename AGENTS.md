@@ -21,10 +21,10 @@ Order: lint -> typecheck -> test.
   - `_do_chat(client, method)` -- interactive chatbot
   - `_generate_itinerary(client, method)` -- Bali itinerary generation (currently active)
   - `_email_inquiry(client, method)` -- email analysis + HTML response
-- **API call methods**: `"completion"` (standard Async OpenAI), `"bytez"` (Bytez SDK only), `"stream"` (streaming). `"bytez"` only works with the `bytez` provider config; the other two work with any provider.
+- **API call methods**: `"completion"` (standard Async OpenAI) and `"stream"` (streaming). Both work with any provider config.
 - **Default provider**: Inception (`kwargs["inception"]` in `main.py`). Provider configs are hardcoded dictionaries in `main()` -- edit there to switch.
-- **Core client**: `OpenAIClient` extends `openai.AsyncOpenAI`, adds `completion()`, `bytez()`, and `list_models()` methods. All API calls use the `@with_retry` decorator (tenacity-based, settings-driven).
-- **Settings**: `pydantic-settings` loads from root `.env`. All six API keys (`INCEPTION_API_KEY`, `OPENROUTER_API_KEY`, `BYTEZ_API_KEY`, `NVIDIA_API_KEY`, `EXA_API_KEY`, `BRAVE_API_KEY`) are **required** -- missing any will raise a validation error on import.
+- **Core client**: `OpenAIClient` extends `openai.AsyncOpenAI`, adds `completion()` and `list_models()` methods. All API calls use the `@with_retry` decorator (tenacity-based, settings-driven).
+- **Settings**: `pydantic-settings` loads from root `.env` and `.env.configs`. The API keys (`INCEPTION_API_KEY`, `OPENROUTER_API_KEY`, `NVIDIA_API_KEY`, `EXA_API_KEY`, `BRAVE_API_KEY`, `MISTRAL_API_KEY`, `FIREWORKS_API_KEY`, `ATMOROUTER_API_KEY`) are **required** -- missing any will raise a validation error on import. `DEEPSEEK_API_KEY` is optional and validated only when that provider is selected.
 
 ## Testing
 

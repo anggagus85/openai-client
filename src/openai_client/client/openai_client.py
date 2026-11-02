@@ -1,15 +1,11 @@
-from asyncio import to_thread
 from collections.abc import AsyncGenerator, AsyncIterator, Callable
 from contextlib import aclosing, asynccontextmanager
 from json import dumps, loads
 from logging import getLogger
 
 from anyio import Path
-from bytez import Bytez
-from bytez.client import Response
 from openai import AsyncOpenAI, RateLimitError
 from rich import print as rprint
-from rich.pretty import pprint
 
 from openai_client.configs import Providers as Prv
 from openai_client.configs import settings
@@ -57,33 +53,7 @@ class OpenAIClient(AsyncOpenAI):
     def __str__(self) -> str:
         return f"model '{self.model}' via {self.base_url}"
 
-    @with_retry(
-        max_attempts=settings.AI_MAX_RETRIES,
-        base_delay=settings.AI_RETRY_DELAY,
-        max_delay=settings.AI_RETRY_DELAY * (settings.AI_BACKOFF_FACTOR**settings.AI_MAX_RETRIES),
-        exec_retry=API_EXCEPTIONS,
-    )
-    async def _bytez(self, messages: ListParams) -> Response:
-        return await to_thread(self._sync_bytez_call, messages)
-
-    def _sync_bytez_call(self, messages: ListParams) -> Response:
-        bytez_model = Bytez(self.api_key).model(self.model)
-        bytez_params = {"temperature": 0.3}
-        result = bytez_model.run(messages, bytez_params)
-        assert isinstance(result, Response), f"Expected Response, got {type(result)}"
-        return result
-
-    async def list_models(self, provider: str) -> None:
-        if provider == "bytez":
-            pprint(
-                await to_thread(
-                    lambda: Bytez(self.api_key).list.models(
-                        options={"task": "chat", "modelId": "Qwen3-4B"},
-                    ),
-                ),
-            )
-            return
-
+    async def list_models(self, provider: str) -> list[str]:
         model_list = await self.models.list()
 
         lists: list[str] = []
@@ -101,6 +71,7 @@ class OpenAIClient(AsyncOpenAI):
         models = loads(await path.read_text(encoding="utf-8")) if await path.exists() else {}
         models[provider] = lists
         await save_to_file(dumps(models, indent=4), path)
+        return lists
 
     @staticmethod
     def _cleanup_answer(content: str) -> str:
@@ -109,11 +80,10 @@ class OpenAIClient(AsyncOpenAI):
             answer = parts[1].strip()
         return answer
 
-    def call(self, *, append: bool = True, is_bytez: bool = False) -> dict[str, Callable]:
+    def call(self, *, append: bool = True) -> dict[str, Callable]:
         return {
             "completion": lambda: self._completion(append=append),
-            "bytez": lambda: self._call_bytez(append=append),
-            "stream": lambda: self._iter_chunk(self._stream_chunk(), is_bytez=is_bytez),
+            "stream": lambda: self._iter_chunk(self._stream_chunk()),
         }
 
     @with_retry(
@@ -140,75 +110,15 @@ class OpenAIClient(AsyncOpenAI):
                 self._append_assistant_message(answer)
             return answer
 
-    async def _call_bytez(self, *, append: bool = True) -> str:
-        async with _handle_api_call():
-            response = await self._bytez(self.messages)
-
-        if not isinstance(response, Response):
-            rprint("\n[b i red]No reply..")
-            details = f"Invalid response type: {type(response)}"
-            logger.error(details)
-            raise AppSystemError(details)
-
-        if error := response.error:
-            rprint("\n[b i red]No reply..")
-            raise ApiError(error)
-
-        if not isinstance(out_dict := response.output, dict):
-            rprint("\n[b i red]No reply..")
-            details = f"Invalid output type: {type(out_dict)}"
-            logger.error(details)
-            raise AppSystemError(details)
-
-        if "content" not in out_dict:
-            rprint("\n[b i red]No reply..")
-            details = "Response missing 'content' key"
-            logger.error(details)
-            raise AppSystemError(details)
-
-        answer = self._cleanup_answer(out_dict["content"])
-        if append:
-            self._append_assistant_message(answer)
-        return answer
-
-    async def _iter_chunk(
-        self,
-        chunks: AsyncIterator[str | None],
-        *,
-        is_bytez: bool = False,
-    ) -> str:
-        buffer = ""
-        started = False
-        skipping_leading = False
+    async def _iter_chunk(self, chunks: AsyncIterator[str | None]) -> str:
         output = ""
 
         async for token in chunks:
             if token is None:
                 return output
 
-            current_token: str = token
-
-            if not is_bytez:
-                rprint(current_token, end="", flush=True)
-                output += current_token
-                continue
-
-            if not started:
-                buffer += token
-                if "</think>" not in buffer:
-                    continue
-                buffer = buffer.split("</think>")[-1]
-                started = True
-                skipping_leading = True
-                current_token = buffer
-
-            if skipping_leading:
-                if not (current_token := current_token.lstrip()):
-                    continue
-                skipping_leading = False
-
-            rprint(current_token, end="", flush=True)
-            output += current_token
+            rprint(token, end="", flush=True)
+            output += token
 
         print()
         return output
