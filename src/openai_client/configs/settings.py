@@ -28,7 +28,6 @@ class Settings(BaseSettings):
     EXA_API_KEY: str
     BRAVE_API_KEY: str
     MISTRAL_API_KEY: str
-    FIREWORKS_API_KEY: str
     ATMOROUTER_API_KEY: str
     # Optional at load time; validated when Providers.DEEPSEEK is selected.
     DEEPSEEK_API_KEY: str | None = None
@@ -52,9 +51,6 @@ class Settings(BaseSettings):
     MISTRAL_BASE_URL: str = "https://api.mistral.ai"
     MISTRAL_MODEL: str = "mistral-large-latest"
 
-    FIREWORKS_BASE_URL: str = "https://api.fireworks.ai/inference/v1"
-    FIREWORKS_MODEL: str = "accounts/fireworks/models/minimax-m2p7"
-
     AI_REQUEST_TIMEOUT: int = 60  # seconds
     AI_MAX_RETRIES: int = 2
     AI_RETRY_DELAY: float = 1.0  # seconds
@@ -71,7 +67,6 @@ class Providers(StrEnum):
     OPENROUTER = "openrouter"
     NVIDIA = "nvidia"
     MISTRAL = "mistral"
-    FIREWORKS = "fireworks"
 
 
 class ProviderConfig(TypedDict):

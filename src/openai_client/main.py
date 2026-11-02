@@ -198,11 +198,6 @@ async def main() -> None:
             "base_url": settings.MISTRAL_BASE_URL,
             "model": settings.MISTRAL_MODEL,
         },
-        Prv.FIREWORKS: {
-            "api_key": settings.FIREWORKS_API_KEY,
-            "base_url": settings.FIREWORKS_BASE_URL,
-            "model": settings.FIREWORKS_MODEL,
-        },
     }
 
     # ------------
