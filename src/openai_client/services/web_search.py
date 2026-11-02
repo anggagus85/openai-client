@@ -3,7 +3,7 @@
 from logging import getLogger
 from typing import Any
 
-from httpx import AsyncClient
+from httpx2 import AsyncClient
 
 from openai_client.configs import settings
 

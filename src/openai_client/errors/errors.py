@@ -1,6 +1,6 @@
 # src/openai_client/errors/errors.py
 
-from httpx import ReadTimeout
+from httpx2 import ReadTimeout
 from openai import (
     AuthenticationError,
     BadRequestError,
