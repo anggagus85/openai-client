@@ -3,14 +3,15 @@ from collections.abc import AsyncGenerator, AsyncIterator, Callable
 from contextlib import aclosing, asynccontextmanager
 from json import dumps, loads
 from logging import getLogger
-from pathlib import Path
 
+from anyio import Path
 from bytez import Bytez
 from bytez.client import Response
 from openai import AsyncOpenAI, RateLimitError
 from rich import print as rprint
 from rich.pretty import pprint
 
+from openai_client.configs import Providers as Prv
 from openai_client.configs import settings
 from openai_client.decorators.with_retry import with_retry
 from openai_client.errors import (
@@ -84,16 +85,22 @@ class OpenAIClient(AsyncOpenAI):
             return
 
         model_list = await self.models.list()
-        model_data = model_list.data
 
-        free = [
-            model.id
-            for model in model_data
-            if ":free" in model.id and not any(x in model.id for x in ["-coder", "-it"])
-        ]
-        models = loads(await to_thread(lambda: Path("models.json").read_text()))
-        models[provider] = free
-        await to_thread(save_to_file, dumps(models, indent=4), Path("models.json"))
+        lists: list[str] = []
+        for model in model_list.data:
+            model_id = model.id
+            if any(x in model_id for x in ("-coder", "-it", "embed")):
+                continue
+            # OpenRouter is the only provider where the free tier is worth listing;
+            # every other provider keeps its full catalogue.
+            if provider == Prv.OPENROUTER and ":free" not in model_id:
+                continue
+            lists.append(model_id)
+
+        path = Path("models.json")
+        models = loads(await path.read_text(encoding="utf-8")) if await path.exists() else {}
+        models[provider] = lists
+        await save_to_file(dumps(models, indent=4), path)
 
     @staticmethod
     def _cleanup_answer(content: str) -> str:

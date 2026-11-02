@@ -25,11 +25,6 @@
             "type": "local",
             "command": ["npx", "-y", "@upstash/context7-mcp@latest"],
             "enabled": false
-        },
-        "augment-context-engine": {
-            "type": "local",
-            "command": ["auggie", "--mcp", "--mcp-auto-workspace"],
-            "enabled": true
         }
     }
 }

@@ -1,9 +1,9 @@
 # src/openai_client/utils/helpers.py
 
 from logging import getLogger
-from pathlib import Path
 from re import compile as re_compile
 
+from anyio import Path
 from mdformat import text as mdformat_text
 
 from openai_client.errors import SYSTEM_EXCEPTIONS, AppSystemError
@@ -11,18 +11,17 @@ from openai_client.errors import SYSTEM_EXCEPTIONS, AppSystemError
 logger = getLogger(__name__)
 
 
-def save_to_file(data: str, file_path: Path) -> None:
+async def save_to_file(data: str, file_path: Path) -> None:
     """
     Write string data to a file.
 
     Args:
         data: The data string to write.
-        file_path: The path to the file to write to.
+        file_path: The (anyio) path to the file to write to.
     """
 
     try:
-        with file_path.open("w", encoding="utf-8") as f:
-            f.write(data)
+        await file_path.write_text(data, encoding="utf-8")
         logger.info("Data saved to '%s'", file_path)
     except SYSTEM_EXCEPTIONS as e:
         details = f"Failed to save data to file: {e}"

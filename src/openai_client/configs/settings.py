@@ -1,10 +1,13 @@
 # src/openai_client/configs/settings.py
 
+from enum import StrEnum
 from pathlib import Path
+from typing import TypedDict
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 ENV_FILE = Path.cwd() / ".env"
+CONFIGS_FILE = Path.cwd() / ".env.configs"
 
 WHATSAPP_NUMBER = "+6285847006743"
 
@@ -13,7 +16,7 @@ class Settings(BaseSettings):
     """Application settings with validation and default values."""
 
     model_config = SettingsConfigDict(
-        env_file=ENV_FILE,
+        env_file=(ENV_FILE, CONFIGS_FILE),
         env_file_encoding="utf-8",
         extra="ignore",
     )
@@ -27,6 +30,30 @@ class Settings(BaseSettings):
     MISTRAL_API_KEY: str
     FIREWORKS_API_KEY: str
     ATMOROUTER_API_KEY: str
+    # Optional at load time; validated when Providers.DEEPSEEK is selected.
+    DEEPSEEK_API_KEY: str | None = None
+
+    # Provider endpoints (overridden by .env.configs when present)
+    ATMOROUTER_BASE_URL: str = "https://atmorouter.dev/v1"
+    ATMOROUTER_MODEL: str = "atmo/deepseek-v4.1-flash"
+
+    DEEPSEEK_BASE_URL: str = "https://api.deepseek.com"
+    DEEPSEEK_MODEL: str = "deepseek-flash"
+
+    INCEPTION_BASE_URL: str = "https://api.inceptionlabs.ai/v1"
+    INCEPTION_MODEL: str = "mercury-2"
+
+    OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
+    OPENROUTER_MODEL: str = "stepfun/step-3.5-flash:free"
+
+    NVIDIA_BASE_URL: str = "https://integrate.api.nvidia.com/v1"
+    NVIDIA_MODEL: str = "stepfun-ai/step-3.5-flash"
+
+    MISTRAL_BASE_URL: str = "https://api.mistral.ai"
+    MISTRAL_MODEL: str = "mistral-large-latest"
+
+    FIREWORKS_BASE_URL: str = "https://api.fireworks.ai/inference/v1"
+    FIREWORKS_MODEL: str = "accounts/fireworks/models/minimax-m2p7"
 
     AI_REQUEST_TIMEOUT: int = 60  # seconds
     AI_MAX_RETRIES: int = 2
@@ -35,3 +62,23 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+
+class Providers(StrEnum):
+    ATMOROUTER = "atmorouter"
+    DEEPSEEK = "deepseek"
+    INCEPTION = "inception"
+    OPENROUTER = "openrouter"
+    NVIDIA = "nvidia"
+    MISTRAL = "mistral"
+    FIREWORKS = "fireworks"
+
+
+class ProviderConfig(TypedDict):
+    """Keyword arguments accepted by OpenAIClient / MistralAI."""
+
+    # Only None for providers whose key is optional (currently DeepSeek);
+    # selection-time validation rejects a missing key.
+    api_key: str | None
+    base_url: str
+    model: str

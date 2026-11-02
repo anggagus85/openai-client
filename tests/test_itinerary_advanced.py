@@ -10,6 +10,7 @@ from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from anyio import Path as AnyPath
 
 from openai_client.schemas.ai import ItineraryRequestMD
 from openai_client.services.itinerary import Itinerary
@@ -64,7 +65,7 @@ def mock_web_search(results: str = "") -> Generator[MagicMock]:
 def temp_cwd() -> Generator[Path]:
     with tempfile.TemporaryDirectory() as tmpdir:
         cwd = Path(tmpdir)
-        with patch("pathlib.Path.cwd", return_value=cwd):
+        with patch("anyio.Path.cwd", new=AsyncMock(return_value=AnyPath(tmpdir))):
             yield cwd
 
 

@@ -2,8 +2,9 @@
 
 from datetime import datetime
 from logging import getLogger
-from pathlib import Path
 from textwrap import dedent
+
+from anyio import Path
 
 from openai_client.client import MistralAI, OpenAIClient
 from openai_client.configs import WHATSAPP_NUMBER
@@ -310,7 +311,8 @@ class Itinerary:
             return
 
         content = clean_markdown(content)
-        save_to_file(content, Path.cwd() / "itinerary.md")
+        output_dir = await Path.cwd()
+        await save_to_file(content, output_dir / "itinerary.md")
 
         whatsapp_text = markdown_to_whatsapp(content)
-        save_to_file(whatsapp_text, Path.cwd() / "itinerary.txt")
+        await save_to_file(whatsapp_text, output_dir / "itinerary.txt")
