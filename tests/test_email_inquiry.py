@@ -195,11 +195,6 @@ class TestAnalyzeContact:
 
         assert result.summary == "Prefaced fenced"
 
-    def test_rejects_unknown_method(self) -> None:
-        client = MagicMock()
-        with pytest.raises(ValueError, match="Unknown method"):
-            async_run(_service(client, _inquiry()).analyze_contact("bad"))
-
 
 class TestConfirmationMessage:
     def test_successful_confirmation(self) -> None:

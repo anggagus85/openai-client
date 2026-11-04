@@ -1,5 +1,4 @@
 from asyncio import run as async_run
-from collections.abc import Awaitable, Callable
 from datetime import date, timedelta
 from enum import StrEnum
 from json import dumps, loads
@@ -61,24 +60,16 @@ async def _openai_chat(client: OpenAIClient, method: str) -> None:
     await Chatbot(client).run(method)
 
 
-async def _openai_itinerary(client: OpenAIClient, method: str) -> None:
-    response = await Itinerary(client, itinerary_req).run(method)
+async def _openai_itinerary(client: OpenAIClient) -> None:
+    response = await Itinerary(client, itinerary_req).run()
     await save_itinerary_to_file(response.markdown, response.whatsapp)
     rprint("[b i green]itinerary saved :[/b i green]\n\nitinerary.md\nitinerary.txt")
 
 
-async def _openai_email_inquiry(client: OpenAIClient, method: str) -> None:
+async def _openai_email_inquiry(client: OpenAIClient) -> None:
     service = EmailService(client, inquiry)
-    confirmation = await service.run(method)
+    confirmation = await service.run()
     rprint(f"[b i green]confirmation :[/b i green]\n\n{confirmation.confirmation}")
-
-
-async def _openai_services(
-    client: OpenAIClient,
-    service: Callable[[OpenAIClient, str], Awaitable[None]],
-    method: str,
-) -> None:
-    await service(client, method)
 
 
 # ------------
@@ -90,15 +81,15 @@ async def _mistral_chat(mistral: MistralAI, method: str) -> None:
     await Chatbot(mistral).run(method)
 
 
-async def _mistral_itinerary(mistral: MistralAI, method: str) -> None:
-    response = await Itinerary(mistral, itinerary_req).run(method)
+async def _mistral_itinerary(mistral: MistralAI) -> None:
+    response = await Itinerary(mistral, itinerary_req).run()
     await save_itinerary_to_file(response.markdown, response.whatsapp)
     rprint("[b i green]itinerary saved :[/b i green]\n\nitinerary.md\nitinerary.txt")
 
 
-async def _mistral_email_inquiry(mistral: MistralAI, method: str) -> None:
+async def _mistral_email_inquiry(mistral: MistralAI) -> None:
     service = EmailService(mistral, inquiry)
-    confirmation = await service.run(method)
+    confirmation = await service.run()
     rprint(f"[b i green]confirmation :[/b i green]\n\n{confirmation.confirmation}")
 
 
@@ -127,14 +118,6 @@ async def _mistrals_models(mistral: MistralAI) -> None:
     all_models["mistral"] = models
 
     await save_to_file(dumps(all_models, indent=4), (await Path.cwd()) / "models.json")
-
-
-async def _mistrals(
-    client: MistralAI,
-    service: Callable[[MistralAI, str], Awaitable[None]],
-    method: str,
-) -> None:
-    await service(client, method)
 
 
 def _require_api_key(config: ProviderConfig, provider: Prv) -> str:
@@ -190,8 +173,13 @@ async def main() -> None:
     #     model=mistral_config["model"],
     # )
     # # await _mistrals_models(mistral)
-    # services = [_mistral_chat, _mistral_itinerary, _mistral_email_inquiry]
-    # await _mistrals(mistral, services[0], Methods.STREAM)
+
+    # try:
+    #     await _mistral_chat(mistral, Methods.STREAM)
+    #     # await _mistral_itinerary(mistral)
+    #     # await _mistral_email_inquiry(mistral)
+    # finally:
+    #     await mistral.close()
 
     provider = Prv.INCEPTION
     config = kwargs[provider]
@@ -201,9 +189,10 @@ async def main() -> None:
         model=config["model"],
     )
     # await client.list_models(provider)
-    services = [_openai_chat, _openai_itinerary, _openai_email_inquiry]
     try:
-        await _openai_services(client, services[0], Methods.STREAM)
+        await _openai_chat(client, Methods.STREAM)
+        # await _openai_itinerary(client)
+        # await _openai_email_inquiry(client)
     finally:
         await client.close()
 

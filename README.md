@@ -116,19 +116,20 @@ uv run openai-client
 The entry point (`main.py`) configures the provider and selects one of three features:
 
 - `_openai_chat(client, method)` -- Interactive chatbot session
-- `_openai_itinerary(client, method)` -- Generate a Bali travel itinerary
-- `_openai_email_inquiry(client, method)` -- Analyze an inquiry and write `email_inquiry.html`
+- `_openai_itinerary(client)` -- Generate a Bali travel itinerary
+- `_openai_email_inquiry(client)` -- Analyze an inquiry and write `email_inquiry.html`
 
 There is no runtime selection flag. Edit `provider = Prv.INCEPTION` in `main()` to choose the
-provider, and change the `services[0]` index passed to `_openai_services` to select the feature
-(`0` chat, `1` itinerary, `2` email).
+provider, and uncomment exactly one feature call (`_openai_chat`, `_openai_itinerary`, or
+`_openai_email_inquiry`) at the bottom of `main()`.
 
-Each feature supports two calling methods:
+Only chat accepts a calling method:
 
-| Method | Description |
+| Feature | Methods |
 | --- | --- |
-| `"completion"` | Standard non-streaming completion |
-| `"stream"` | Chat emits SSE chunks; `Itinerary.run` and `EmailService.run` accept the value but always perform non-streaming completions. |
+| Chat (`Chatbot.run`) | `"completion"` or `"stream"` (SSE chunks) |
+| Itinerary (`Itinerary.run`) | Always `"completion"` (non-streaming) |
+| Email (`EmailService.run`) | Always `"completion"` (non-streaming) |
 
 ## AI Providers
 

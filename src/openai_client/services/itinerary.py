@@ -79,17 +79,12 @@ class Itinerary:
 
         return ItineraryResponse(markdown=content, whatsapp=whatsapp_text)
 
-    async def run(self, method: str = "completion") -> ItineraryResponse:
+    async def run(self) -> ItineraryResponse:
         """
         CLI harness: search Bali, build the production prompt, then generate.
 
-        Production always performs itinerary generation without streaming, so
-        ``method`` is accepted for CLI symmetry but does not alter the call.
+        Itinerary generation is always a non-streaming completion.
         """
-        if method not in {"completion", "stream"}:
-            details = f"Unknown method: {method}"
-            raise ValueError(details)
-
         request = self._itinerary_req
         configs: dict[str, Any] = {
             "num_results": 5,

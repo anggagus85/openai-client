@@ -70,20 +70,12 @@ class EmailService:
 
         return text
 
-    @staticmethod
-    def _validate_method(method: str) -> None:
-        if method not in {"completion", "stream"}:
-            details = f"Unknown method: {method}"
-            raise ValueError(details)
-
-    async def analyze_contact(self, method: str = "completion") -> AnalysisFormat:
+    async def analyze_contact(self) -> AnalysisFormat:
         """
         Analyze a contact inquiry using the production prompt and JSON schema.
 
-        Email analysis is always a non-streaming completion in production.
+        Email analysis is always a non-streaming completion.
         """
-        self._validate_method(method)
-
         logger.info("Analyzing email inquiry with %s", self._client)
 
         self._messages = []
@@ -116,13 +108,10 @@ class EmailService:
 
     async def confirmation_message(
         self,
-        method: str = "completion",
         *,
         sent: bool = True,
     ) -> ContactAnalysisResponse:
         """Generate the customer-facing confirmation message."""
-        self._validate_method(method)
-
         # Rebuild the message list so repeated calls never accumulate prompts.
         self._messages = []
         append_system_message(self._messages, self._system_content(), is_mistral=self._is_mistral)
@@ -152,12 +141,10 @@ class EmailService:
                 ),
             )
 
-    async def run(self, method: str = "completion") -> ContactAnalysisResponse:
+    async def run(self) -> ContactAnalysisResponse:
         """CLI harness: analyze, write the analysis HTML, then confirm."""
-        self._validate_method(method)
-
-        analysis = await self.analyze_contact(method)
+        analysis = await self.analyze_contact()
         body = create_analysis_body(self._inquiry, analysis)
         await save_to_file(body, (await Path.cwd()) / "email_inquiry.html")
 
-        return await self.confirmation_message(method)
+        return await self.confirmation_message()

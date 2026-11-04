@@ -160,10 +160,6 @@ class TestItineraryRun:
         user_content = client.generate.call_args.args[0]["messages"][1]["content"]
         assert "latest_web_search_results" not in user_content
 
-    def test_rejects_unknown_method(self) -> None:
-        with pytest.raises(ValueError, match="Unknown method"):
-            async_run(Itinerary(_client(), _request()).run("bad"))
-
 
 class TestCleanMarkdown:
     def test_returns_formatted_text(self) -> None:
