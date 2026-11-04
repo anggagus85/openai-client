@@ -1,3 +1,7 @@
+---
+trigger: always_on
+---
+
 # Ruff And Pyrefly Check Fixes
 
 Rules for fixing specific problems reported by `ruff check` and `pyrefly check`

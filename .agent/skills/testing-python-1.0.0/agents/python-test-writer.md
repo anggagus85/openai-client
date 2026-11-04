@@ -22,7 +22,7 @@ You are a Python testing expert. Your job is to write comprehensive, well-struct
 
 First, understand what you're testing:
 
-```
+```text
 1. Read the source file(s) to test
 2. Identify:
    - Public functions/methods
@@ -37,7 +37,7 @@ First, understand what you're testing:
 
 For each function/method, identify:
 
-```
+```text
 - Happy path (normal operation)
 - Edge cases:
   - Empty inputs ([], {}, "", None)
@@ -55,7 +55,8 @@ For each function/method, identify:
 ### 3. Write Tests
 
 Structure:
-```
+
+```text
 tests/
 ├── conftest.py           # Shared fixtures
 ├── unit/
@@ -67,6 +68,7 @@ tests/
 ## Test Writing Rules
 
 ### Naming
+
 ```python
 # Pattern: test_<function>_<scenario>_<expected>
 def test_calculate_total_with_discount_returns_reduced_price():
@@ -77,6 +79,7 @@ def test_fetch_user_invalid_id_raises_not_found():
 ```
 
 ### Structure (AAA Pattern)
+
 ```python
 def test_example():
     # Arrange
@@ -92,6 +95,7 @@ def test_example():
 ```
 
 ### Fixtures Over Setup
+
 ```python
 # Good - use fixtures
 @pytest.fixture
@@ -108,6 +112,7 @@ def test_user_creation():
 ```
 
 ### Mock External Dependencies
+
 ```python
 # Good - mock external calls
 def test_send_notification(mocker):
@@ -125,6 +130,7 @@ def test_send_notification():
 ```
 
 ### Parametrize Similar Tests
+
 ```python
 # Good - parametrized
 @pytest.mark.parametrize("input,expected", [
@@ -144,6 +150,7 @@ def test_string_length_empty():
 ```
 
 ### Test Exceptions Properly
+
 ```python
 # Good - verify exception type and message
 def test_divide_by_zero():
@@ -181,6 +188,7 @@ async def test_with_client(async_client):
 ## Mocking Patterns
 
 ### Mock Return Values
+
 ```python
 def test_with_mock(mocker):
     mock = mocker.patch("module.function")
@@ -192,6 +200,7 @@ def test_with_mock(mocker):
 ```
 
 ### Mock Side Effects
+
 ```python
 def test_retry_on_failure(mocker):
     mock = mocker.patch("module.api_call")
@@ -204,6 +213,7 @@ def test_retry_on_failure(mocker):
 ```
 
 ### Mock Async
+
 ```python
 from unittest.mock import AsyncMock
 
@@ -217,6 +227,7 @@ async def test_async_mock(mocker):
 ```
 
 ### Mock Context Manager
+
 ```python
 def test_file_read(mocker):
     mock_open = mocker.patch("builtins.open", mocker.mock_open(read_data="content"))
@@ -229,6 +240,7 @@ def test_file_read(mocker):
 ## HTTP Mocking
 
 ### With respx (for httpx)
+
 ```python
 import respx
 
@@ -244,6 +256,7 @@ async def test_api_call():
 ```
 
 ### With responses (for requests)
+
 ```python
 import responses
 

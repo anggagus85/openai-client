@@ -13,6 +13,7 @@ Modern Python testing with pytest ecosystem.
 ## Tooling
 
 **ALWAYS use:**
+
 - `pytest` — test runner
 - `pytest-cov` — coverage
 - `pytest-asyncio` — async tests
@@ -22,6 +23,7 @@ Modern Python testing with pytest ecosystem.
 - `aioresponses` — HTTP mocking for aiohttp
 
 **NEVER use:**
+
 - `unittest` style (use pytest native)
 - `nose` (deprecated)
 - `mock` standalone (use pytest-mock)
@@ -66,7 +68,7 @@ exclude_lines = [
 
 ### Directory Structure
 
-```
+```text
 project/
 ├── src/
 │   └── mypackage/
@@ -336,7 +338,8 @@ pytest --cov=src --cov-fail-under=80
 
 ## Best Practices
 
-### DO:
+### DO
+
 - One assertion per test (usually)
 - Descriptive test names: `test_<what>_<condition>_<expected>`
 - Use fixtures for setup/teardown
@@ -345,7 +348,8 @@ pytest --cov=src --cov-fail-under=80
 - Keep tests fast (mock external services)
 - Use `pytest.raises` for exception testing
 
-### DON'T:
+### DON'T
+
 - Test implementation details
 - Use `time.sleep()` in tests
 - Share state between tests
@@ -363,7 +367,7 @@ pytest --cov=src --cov-fail-under=80
 
 Use the **python-test-writer** agent for generating comprehensive tests:
 
-```
+```text
 Task: python-test-writer
 Prompt: Write tests for src/mypackage/service.py
 ```
