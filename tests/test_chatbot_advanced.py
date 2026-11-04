@@ -29,6 +29,15 @@ def _chunk(content: str | None, finish_reason: str | None = None) -> MagicMock:
     return chunk
 
 
+def _provider_stream(contents: list[str]) -> AsyncGenerator[MagicMock]:
+    async def gen() -> AsyncGenerator[MagicMock]:
+        for content in contents:
+            yield _chunk(content)
+        yield _chunk(None, finish_reason="stop")
+
+    return gen()
+
+
 class TestCollectHistory:
     def test_maps_model_role_to_assistant(self, mock_chatbot: Chatbot) -> None:
         mock_chatbot._chat_req = ChatRequest(
@@ -272,6 +281,43 @@ class TestInjectionSafeStream:
         mock_chatbot = Chatbot.__new__(Chatbot)
         chunks = async_run(collect())
         assert chunks == ['data: "RULE PRI"\n\n', "data: [ERROR] Response blocked.\n\n"]
+
+    def test_blocked_stream_does_not_log_client_disconnect(
+        self,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        client = MagicMock()
+        client.is_mistral = False
+        client.generate = AsyncMock(return_value=_provider_stream(["RULE PRIORITY"]))
+        chatbot = Chatbot(client, chat_request=ChatRequest(query="hi"))
+
+        async def collect() -> list[str]:
+            return [chunk async for chunk in chatbot.safe_stream()]
+
+        with caplog.at_level("WARNING", logger="openai_client.services.chatbot"):
+            chunks = async_run(collect())
+
+        assert chunks == ["data: [ERROR] Response blocked.\n\n"]
+        assert "Client disconnected during streaming" not in caplog.text
+
+    def test_consumer_disconnect_logs_warning(
+        self,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        client = MagicMock()
+        client.is_mistral = False
+        client.generate = AsyncMock(return_value=_provider_stream(["Hel", "lo"]))
+        chatbot = Chatbot(client, chat_request=ChatRequest(query="hi"))
+
+        async def consume_one() -> None:
+            stream = chatbot.safe_stream()
+            await anext(stream)
+            await stream.aclose()
+
+        with caplog.at_level("WARNING", logger="openai_client.services.chatbot"):
+            async_run(consume_one())
+
+        assert "Client disconnected during streaming" in caplog.text
 
 
 class TestRunGuards:

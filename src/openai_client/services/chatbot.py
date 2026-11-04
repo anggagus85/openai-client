@@ -78,6 +78,9 @@ class Chatbot:
         self._search_results = ""
         self._is_mistral = bool(getattr(client, "is_mistral", False))
         self._configs: dict[str, Any] = {"temperature": 0.5, "top_p": 1.0}
+        # Set when the output-injection guard closes the stream itself, so the
+        # resulting GeneratorExit is not misreported as a client disconnect.
+        self._stream_blocked = False
 
     def _collect_history(self) -> None:
         """Collect and map sanitized chat history to OpenAI message format."""
@@ -191,6 +194,7 @@ class Chatbot:
 
     async def _stream_chunk(self, search_ctx_idx: int | None = None) -> AsyncGenerator[str]:
         """Yield SSE-formatted chunks from the provider stream."""
+        self._stream_blocked = False
         configs = {**self._configs, "stream": True}
         try:
             stream = await self._client.generate(configs, stream=True)
@@ -216,7 +220,8 @@ class Chatbot:
                 if content:
                     yield f"data: {json_dumps(content)}\n\n"
         except GeneratorExit:
-            logger.warning("Client disconnected during streaming")
+            if not getattr(self, "_stream_blocked", False):
+                logger.warning("Client disconnected during streaming")
             raise
         finally:
             self._remove_search_context(search_ctx_idx)
@@ -254,6 +259,7 @@ class Chatbot:
             if first_chunk is not None:
                 tail = self._extract_sse_text(first_chunk)
                 if _detect_output_injection(tail):
+                    self._stream_blocked = True
                     await close_async_stream(gen)
                     yield "data: [ERROR] Response blocked.\n\n"
                     return
@@ -268,6 +274,7 @@ class Chatbot:
 
                     window = (tail + text)[-_TRAILING_WINDOW:]
                     if _detect_output_injection(window):
+                        self._stream_blocked = True
                         await close_async_stream(gen)
                         yield "data: [ERROR] Response blocked.\n\n"
                         return
