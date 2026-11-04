@@ -265,26 +265,22 @@ class Chatbot:
                     return
                 yield first_chunk
 
-            try:
-                async for chunk in gen:
-                    text = self._extract_sse_text(chunk)
-                    if not text:
-                        yield chunk
-                        continue
-
-                    window = (tail + text)[-_TRAILING_WINDOW:]
-                    if _detect_output_injection(window):
-                        self._stream_blocked = True
-                        await close_async_stream(gen)
-                        yield "data: [ERROR] Response blocked.\n\n"
-                        return
-
-                    tail = window
+            async for chunk in gen:
+                text = self._extract_sse_text(chunk)
+                if not text:
                     yield chunk
+                    continue
 
-            except GeneratorExit:
-                logger.warning("Client disconnected during streaming")
-                raise
+                window = (tail + text)[-_TRAILING_WINDOW:]
+                if _detect_output_injection(window):
+                    self._stream_blocked = True
+                    await close_async_stream(gen)
+                    yield "data: [ERROR] Response blocked.\n\n"
+                    return
+
+                tail = window
+                yield chunk
+
         finally:
             await close_async_stream(gen)
 
@@ -356,21 +352,28 @@ class Chatbot:
         if method == "stream":
             stream = self.safe_stream(self._search_results)
             output = ""
-            async for chunk in stream:
-                if not chunk.startswith("data: "):
-                    continue
-                payload = chunk.removeprefix("data: ").strip()
-                if payload == "[DONE]":
-                    break
-                if payload.startswith("[ERROR]"):
-                    rprint(f"[b i red]{payload}[/b i red]")
-                    return output or payload
-                try:
-                    text = json_loads(payload)
-                except (ValueError, TypeError):
-                    continue
-                output += text
-                rprint(text, end="", flush=True)
+            done = False
+            try:
+                async for chunk in stream:
+                    if not chunk.startswith("data: "):
+                        continue
+                    payload = chunk.removeprefix("data: ").strip()
+                    if payload == "[DONE]":
+                        done = True
+                        break
+                    if payload.startswith("[ERROR]"):
+                        rprint(f"[b i red]{payload}[/b i red]")
+                        return output or payload
+                    try:
+                        text = json_loads(payload)
+                    except (ValueError, TypeError):
+                        continue
+                    output += text
+                    rprint(text, end="", flush=True)
+            finally:
+                await close_async_stream(stream)
+                if not done:
+                    logger.warning("Client disconnected during streaming")
             print()
             return output
 
