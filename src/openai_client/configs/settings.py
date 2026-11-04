@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     )
 
     # Branding / notification configuration (production defaults)
-    LOGO_URL: str = "https://assets.baliroam.com/baliroam/logo-mark-thick-mod_4096x_sgox7l.png"
+    LOGO_URL: str = "https://assets.baliroam.com/baliroam/logo/logo-mark.svg"
     COMPANY_TARGET_EMAIL: str = "example@gmail.com"
     TZ: str = "Asia/Makassar"
 
