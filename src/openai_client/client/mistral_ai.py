@@ -43,6 +43,14 @@ async def _handle_api_call() -> AsyncGenerator:
 
 
 class _MistralDelta:
+    """
+    Stream delta shim exposing ``content`` in the OpenAI delta shape.
+
+    The shared service logic reads ``choice.delta.content`` and
+    ``choice.finish_reason``. Mistral streams a plain ``DeltaMessage`` with a
+    ``content`` attribute, so this wraps it under the expected key.
+    """
+
     __slots__ = ("content",)
 
     def __init__(self, content: str | None) -> None:
@@ -50,6 +58,13 @@ class _MistralDelta:
 
 
 class _MistralChoice:
+    """
+    Stream choice shim exposing ``delta`` and ``finish_reason``.
+
+    Maps one Mistral ``Choice`` onto the OpenAI ``ChatCompletionChunk`` choice
+    shape so the shared streaming loop can iterate providers transparently.
+    """
+
     __slots__ = ("delta", "finish_reason")
 
     def __init__(self, choice: object) -> None:
@@ -59,7 +74,13 @@ class _MistralChoice:
 
 
 class _MistralChunk:
-    """Adapter exposing Mistral chunks in the OpenAI chunk shape."""
+    """
+    Adapter wrapping a Mistral stream event as an OpenAI-style chunk.
+
+    ``MistralAI.generate(stream=True)`` yields these from the raw SDK stream so
+    that chatbot's ``_stream_chunk`` (which reads ``chunk.choices[0].delta``)
+    works without a Mistral-specific branch.
+    """
 
     __slots__ = ("choices",)
 
@@ -84,6 +105,14 @@ class MistralAI(Mistral):
 
     @staticmethod
     def _clean_configs(configs: dict[str, Any]) -> dict[str, Any]:
+        """
+        Strip ``model`` from the request config before calling the SDK.
+
+        Model is passed explicitly as ``self._model``; keeping it in the dict
+        would duplicate the keyword and make the shared ``generate(configs)``
+        contract awkward. All other keys (messages, temperature, top_p, …) are
+        forwarded unchanged.
+        """
         return {key: value for key, value in configs.items() if key != "model"}
 
     @overload
