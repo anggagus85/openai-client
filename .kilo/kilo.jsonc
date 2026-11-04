@@ -1,0 +1,21 @@
+{
+    "$schema": "https://app.kilo.ai/config.json",
+    "mcp": {
+        "servers": {
+            "python-refactoring": {
+                "type": "local",
+                "command": [
+                    "uvx",
+                    "--from",
+                    "git+https://github.com/slamer59/mcp-python-refactoring.git",
+                    "python-refactor",
+                    "server"
+                ],
+                "disabled": false
+            }
+        }
+    },
+    "instructions": [
+        "docs/rules/python-refactoring-and-codebase-update.md"
+    ]
+}

@@ -1,0 +1,25 @@
+{
+  "plugins": {
+    "pydantic-ai-harness": {
+      "version": "0.1.0",
+      "enabledFeatures": null,
+      "enabled": true
+    },
+    "ai": {
+      "version": "0.1.0",
+      "enabledFeatures": null,
+      "enabled": true
+    },
+    "pydantic": {
+      "version": "0.1.0",
+      "enabledFeatures": null,
+      "enabled": true
+    },
+    "pydantic-ai": {
+      "version": "0.1.0",
+      "enabledFeatures": null,
+      "enabled": true
+    }
+  },
+  "settings": {}
+}

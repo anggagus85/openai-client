@@ -1,0 +1,41 @@
+{
+  "version": 2,
+  "plugins": {
+    "pydantic-ai@claude-plugins-official": [
+      {
+        "scope": "project",
+        "installPath": "/Users/madesuryawan/.omp/plugins/cache/plugins/claude-plugins-official___pydantic-ai___0.1.0",
+        "version": "0.1.0",
+        "installedAt": "2026-11-03T06:11:52.910Z",
+        "lastUpdated": "2026-11-03T06:11:52.910Z"
+      }
+    ],
+    "ai@pydantic-skills": [
+      {
+        "scope": "project",
+        "installPath": "/Users/madesuryawan/.omp/plugins/cache/plugins/pydantic-skills___ai___0.1.0",
+        "version": "0.1.0",
+        "installedAt": "2026-11-03T06:21:07.813Z",
+        "lastUpdated": "2026-11-03T06:21:07.813Z"
+      }
+    ],
+    "pydantic-ai-harness@pydantic-skills": [
+      {
+        "scope": "project",
+        "installPath": "/Users/madesuryawan/.omp/plugins/cache/plugins/pydantic-skills___pydantic-ai-harness___0.1.0",
+        "version": "0.1.0",
+        "installedAt": "2026-11-03T06:21:28.687Z",
+        "lastUpdated": "2026-11-03T06:21:28.687Z"
+      }
+    ],
+    "pydantic@pydantic-skills": [
+      {
+        "scope": "project",
+        "installPath": "/Users/madesuryawan/.omp/plugins/cache/plugins/pydantic-skills___pydantic___0.1.0",
+        "version": "0.1.0",
+        "installedAt": "2026-11-03T06:21:55.741Z",
+        "lastUpdated": "2026-11-03T06:21:55.741Z"
+      }
+    ]
+  }
+}
