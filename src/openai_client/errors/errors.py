@@ -1,4 +1,4 @@
-# src/openai_client/errors/errors.py
+"""Map provider exceptions to user-facing agent errors."""
 
 from logging import getLogger
 from re import search
@@ -20,6 +20,13 @@ from openai import (
     PermissionDeniedError,
     RateLimitError,
     UnprocessableEntityError,
+)
+
+from openai_client.errors.exceptions import (
+    AgentAuthError,
+    AgentError,
+    AgentNetworkError,
+    AgentQuotaExceededError,
 )
 
 logger = getLogger(__name__)
@@ -47,172 +54,6 @@ SYSTEM_EXCEPTIONS = (
     TimeoutError,
     FileNotFoundError,
 )
-
-
-class ApiError(Exception):
-    pass
-
-
-class UnknownError(Exception):
-    pass
-
-
-class AppSystemError(Exception):
-    pass
-
-
-# ---------------------------------------------------------------------------
-# Production agent error hierarchy (mirrors app/errors/agent.py)
-# ---------------------------------------------------------------------------
-
-
-class CircuitBreakerError(Exception):
-    """Raised when a circuit breaker is open."""
-
-    def __init__(
-        self,
-        detail: str = "Service temporarily unavailable",
-        retry_after: float = 0.0,
-        circuit_name: str = "default",
-    ) -> None:
-        super().__init__(detail)
-        self.detail = detail
-        self.retry_after = retry_after
-        self.circuit_name = circuit_name
-
-
-class AgentError(Exception):
-    """Base exception for agent errors."""
-
-    def __init__(
-        self,
-        detail: str = "We're having trouble with our agent. Please try again in a moment.",
-        status_code: int = 500,
-    ) -> None:
-        super().__init__(detail)
-        self.detail = detail
-        self.status_code = status_code
-
-
-class AgentInvalidAPIKeyError(AgentError):
-    def __init__(self, detail: str = "Invalid API key provided.") -> None:
-        super().__init__(detail, status_code=400)
-
-
-class AgentPermissionDeniedError(AgentError):
-    def __init__(
-        self,
-        detail: str = "Your project has been denied access. Please contact support",
-    ) -> None:
-        super().__init__(detail, status_code=403)
-
-
-class AgentAuthError(AgentError):
-    def __init__(
-        self,
-        detail: str = "Our AI service is temporarily unavailable. Please try again later.",
-    ) -> None:
-        super().__init__(detail=detail, status_code=401)
-
-
-class AgentQuotaExceededError(AgentError):
-    def __init__(
-        self,
-        detail: str = "We've reached our AI service limit. Please try again in a few moments.",
-    ) -> None:
-        super().__init__(detail=detail, status_code=429)
-
-
-class AgentNetworkError(AgentError):
-    def __init__(
-        self,
-        detail: str = "We're having trouble connecting to our AI service. Please try again.",
-    ) -> None:
-        super().__init__(detail=detail, status_code=503)
-
-
-class AgentResponseError(AgentError):
-    def __init__(
-        self,
-        detail: str = "We received an unexpected response from our AI service. Please try again.",
-    ) -> None:
-        super().__init__(detail=detail, status_code=502)
-
-
-class AgentGenerationError(AgentError):
-    """Raised when AI content generation fails."""
-
-    def __init__(
-        self,
-        detail: str = (
-            "We couldn't generate the content you requested. "
-            "Please try again or rephrase your request."
-        ),
-    ) -> None:
-        super().__init__(detail=detail, status_code=502)
-
-    def __str__(self) -> str:
-        return f"{self.detail}"
-
-
-class AgentClientError(AgentError):
-    """Raised when the AI client encounters transport or protocol errors."""
-
-    def __init__(
-        self,
-        detail: str = "We're having trouble with our AI service. Please try again in a moment.",
-    ) -> None:
-        super().__init__(detail)
-        self.status_code = 502
-
-
-class ItineraryGenerationError(AgentError):
-    """Raised when AI itinerary generation fails."""
-
-    def __init__(
-        self,
-        detail: str = (
-            "Sorry, we couldn't create your itinerary right now. "
-            "Please try again or contact us for personalized assistance."
-        ),
-    ) -> None:
-        super().__init__(detail)
-        self.status_code = 502
-
-    def __str__(self) -> str:
-        return f"{self.detail}"
-
-
-class QueryProcessingError(AgentError):
-    """Raised when AI query processing fails."""
-
-    def __init__(
-        self,
-        detail: str = (
-            "We couldn't process your question. Please try rephrasing it or ask something else."
-        ),
-    ) -> None:
-        super().__init__(detail)
-        self.status_code = 502
-
-    def __str__(self) -> str:
-        return f"{self.detail}"
-
-
-class ContactAnalysisError(AgentError):
-    """Raised when AI contact analysis fails."""
-
-    def __init__(
-        self,
-        detail: str = (
-            "We couldn't analyze your message. Please try again or submit your inquiry directly."
-        ),
-    ) -> None:
-        super().__init__(detail)
-        self.status_code = 502
-
-    def __str__(self) -> str:
-        return f"{self.detail}"
 
 
 def _handle_openai_error(e: Exception) -> None:

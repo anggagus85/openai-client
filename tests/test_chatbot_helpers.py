@@ -14,7 +14,7 @@ from openai_client.services.prompts import (
     sanitize_for_prompt,
     search_context_message,
 )
-from openai_client.services.prompts.prompts import _BALI_KEYWORDS, _TOURISM_KEYWORDS
+from openai_client.services.prompts.chat import _BALI_KEYWORDS, _TOURISM_KEYWORDS
 
 
 class TestIsTourismQuery:
@@ -29,6 +29,9 @@ class TestIsTourismQuery:
 
     def test_short_input_not_tourism(self) -> None:
         assert is_tourism_query("hello there") is False
+
+    def test_two_word_bali_query_detected(self) -> None:
+        assert is_tourism_query("Bali weather") is True
 
     @pytest.mark.parametrize("pattern", sorted(SKIP_PATTERNS))
     def test_skip_patterns(self, pattern: str) -> None:

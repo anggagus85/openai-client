@@ -2,7 +2,7 @@
 
 """Tests for _markdown_to_whatsapp converter in utils/helpers.py."""
 
-from openai_client.utils.helpers import BaliTravelRenderer, markdown_to_whatsapp
+from openai_client.utils.whatsapp import BaliTravelRenderer, markdown_to_whatsapp
 
 # ---------------------------------------------------------------------------
 # Header conversions
@@ -249,6 +249,36 @@ class TestBulletLists:
         result = markdown_to_whatsapp(md)
         assert "Child" in result
         assert "- Child" in result
+
+
+class TestOrderedLists:
+    """Ordered lists use sequential numbers, preserving multi-line items."""
+
+    def test_simple_ordered_list(self) -> None:
+        result = markdown_to_whatsapp("1. one\n2. two\n3. three\n")
+        assert "1. one" in result
+        assert "2. two" in result
+        assert "3. three" in result
+
+    def test_multiline_item_numbered_once(self) -> None:
+        result = markdown_to_whatsapp("1. first line\n   second line\n2. third\n")
+        assert "1. first line" in result
+        assert "   second line" in result
+        assert "2. third" in result
+        assert "2. second line" not in result
+
+
+class TestHtmlStripping:
+    """Raw HTML becomes plain text, honoring block boundaries."""
+
+    def test_block_tags_separate_paragraphs(self) -> None:
+        result = markdown_to_whatsapp("<p>one</p><p>two</p>")
+        assert "one" in result
+        assert "two" in result
+        assert "onetwo" not in result
+
+    def test_inline_tags_are_stripped(self) -> None:
+        assert markdown_to_whatsapp("a<b>b</b>c") == "abc\n"
 
 
 # ---------------------------------------------------------------------------

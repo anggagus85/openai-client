@@ -77,7 +77,7 @@ class TestSearchBaliInfo:
 
     def test_contains_travel_month(self) -> None:
         result = search_bali_info(_request())
-        assert "11" in result
+        assert "November 2026" in result
 
 
 class TestSearchBaliQueries:
@@ -166,5 +166,5 @@ class TestCleanMarkdown:
         assert "# Hello" in clean_markdown("# Hello\n\n**World**")
 
     def test_fallback_on_error(self) -> None:
-        with patch("openai_client.utils.helpers.mdformat_text", side_effect=Exception("fail")):
+        with patch("openai_client.utils.markdown.mdformat_text", side_effect=Exception("fail")):
             assert clean_markdown("raw text") == "raw text"

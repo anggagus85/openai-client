@@ -64,3 +64,7 @@ class TestPlainTextFallback:
     def test_html_to_plain_text_decodes_entities(self) -> None:
         html = f"<p>{escape('Bali & Java')}</p>"
         assert html_to_plain_text(html) == "Bali & Java"
+
+    def test_html_to_plain_text_trims_indentation(self) -> None:
+        html = "  <div>\n      <p>Hello</p>\n      <p>World</p>\n  </div>"
+        assert html_to_plain_text(html) == "Hello\n\nWorld"

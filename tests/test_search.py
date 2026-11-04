@@ -109,7 +109,7 @@ class TestDeepseekSearch:
         client = _DeepseekSearch(api_key="key")
 
         with patch(
-            "openai_client.services.web_search.AsyncClient",
+            "openai_client.services.web_search.deepseek.AsyncClient",
             return_value=MockAsyncClient([response]),
         ):
             success, result = await client.search("Bali", {})
@@ -120,7 +120,7 @@ class TestDeepseekSearch:
     async def test_search_failure(self) -> None:
         client = _DeepseekSearch(api_key="key")
         with patch(
-            "openai_client.services.web_search.AsyncClient",
+            "openai_client.services.web_search.deepseek.AsyncClient",
             return_value=MockAsyncClient([MagicMock()]),
         ) as mock_cls:
             mock_cls.return_value.post = AsyncMock(side_effect=ConnectionError("down"))
@@ -143,7 +143,7 @@ class TestExaSearch:
         client = _ExaSearch(api_key="key")
 
         with patch(
-            "openai_client.services.web_search.AsyncClient",
+            "openai_client.services.web_search.exa.AsyncClient",
             return_value=MockAsyncClient([response]),
         ):
             success, result = await client.search("Bali", {"num_results": 3})
@@ -158,7 +158,7 @@ class TestExaSearch:
         client = _ExaSearch(api_key="key")
 
         with patch(
-            "openai_client.services.web_search.AsyncClient",
+            "openai_client.services.web_search.exa.AsyncClient",
             return_value=MockAsyncClient([response]),
         ):
             success, result = await client.search("Bali", {})
@@ -169,7 +169,7 @@ class TestExaSearch:
     async def test_search_failure(self) -> None:
         client = _ExaSearch(api_key="key")
         with patch(
-            "openai_client.services.web_search.AsyncClient",
+            "openai_client.services.web_search.exa.AsyncClient",
             return_value=MockAsyncClient([MagicMock()]),
         ) as mock_cls:
             mock_cls.return_value.post = AsyncMock(side_effect=ConnectionError("down"))
@@ -198,7 +198,7 @@ class TestBraveSearch:
         client = _BraveSearch(api_key="key")
 
         with patch(
-            "openai_client.services.web_search.AsyncClient",
+            "openai_client.services.web_search.brave.AsyncClient",
             return_value=MockAsyncClient([response]),
         ):
             success, result = await client.search("Bali travel", {})
@@ -214,7 +214,7 @@ class TestBraveSearch:
         client = _BraveSearch(api_key="key")
 
         with patch(
-            "openai_client.services.web_search.AsyncClient",
+            "openai_client.services.web_search.brave.AsyncClient",
             return_value=MockAsyncClient([response]),
         ):
             success, result = await client.search("Bali", {})
@@ -248,7 +248,7 @@ class TestWebSearch:
         second.__str__ = lambda self: "second"  # type: ignore[method-assign]
         second.search_many = AsyncMock(return_value=(True, "result"))
 
-        with patch("openai_client.services.web_search._providers", return_value=[first, second]):
+        with patch("openai_client.services.web_search.core._providers", return_value=[first, second]):
             result = async_run(WebSearch("test", {}).search("query"))
 
         assert result == "result"
@@ -259,7 +259,7 @@ class TestSearchBaliContext:
         mock_search = MagicMock()
         mock_search.search = AsyncMock(return_value="results")
 
-        with patch("openai_client.services.web_search.WebSearch", return_value=mock_search):
+        with patch("openai_client.services.web_search.core.WebSearch", return_value=mock_search):
             result = async_run(search_bali_context("beaches", "Agent", {}))
 
         assert result == "results"

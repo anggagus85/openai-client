@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from anyio import Path
 
-from openai_client.utils.helpers import save_itinerary_to_file, save_to_file
+from openai_client.utils.files import save_itinerary_to_file, save_to_file
 
 
 class TestSaveToFile:
@@ -53,7 +53,7 @@ class TestSaveItineraryToFile:
     ) -> None:
         with (
             patch(
-                "openai_client.utils.helpers.save_to_file",
+                "openai_client.utils.files.save_to_file",
                 new=AsyncMock(side_effect=OSError("disk full")),
             ),
             caplog.at_level("ERROR"),
