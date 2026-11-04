@@ -14,13 +14,16 @@ logger = getLogger(__name__)
 
 P = ParamSpec("P")
 T = TypeVar("T")
-RETRIABLE_EXCEPTIONS = ConnectionError, TimeoutError
+RETRIABLE_EXCEPTIONS = (ConnectionError, TimeoutError)
 
 
 def _log_before_sleep(
-    max_retries: int,
+    max_attempts: int,
 ) -> Callable[[RetryCallState], None]:
+    """Create a before_sleep callback that logs retry attempts."""
+
     def before_sleep_callback(retry_state: RetryCallState) -> None:
+        """Log retry information before sleeping."""
         exception: BaseException | None = None
         if (outcome := retry_state.outcome) and outcome.failed:
             exception = outcome.exception()
@@ -32,11 +35,17 @@ def _log_before_sleep(
             logger.warning(
                 "Retry %d/%d for %s after %.2fs delay. Exception: %s",
                 retry_state.attempt_number,
-                max_retries,
+                max_attempts,
                 func_name,
                 sleep_duration,
                 exception,
             )
+            return
+        logger.warning(
+            "%s Last attempt failed with %s. No more retries scheduled.",
+            func_name,
+            exception,
+        )
 
     return before_sleep_callback
 
@@ -54,7 +63,7 @@ def with_retry(
         max_attempts: Maximum number of retry attempts.
         base_delay: Initial delay between retries in seconds.
         max_delay: Maximum delay between retries in seconds.
-        exec_retry: Tuple of exception types to retry on.
+        exec_retry: Exception type(s) to retry on.
 
     Returns:
         Decorated function with retry logic.

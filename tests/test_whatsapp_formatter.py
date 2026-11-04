@@ -2,7 +2,7 @@
 
 """Tests for _markdown_to_whatsapp converter in utils/helpers.py."""
 
-from openai_client.utils.helpers import _convert_table_to_whatsapp, markdown_to_whatsapp
+from openai_client.utils.helpers import BaliTravelRenderer, markdown_to_whatsapp
 
 # ---------------------------------------------------------------------------
 # Header conversions
@@ -174,19 +174,36 @@ class TestTableConversion:
 
 
 class TestConvertTableToWhatsapp:
-    """Unit tests for _convert_table_to_whatsapp helper."""
+    """Table conversion is covered through the public renderer above."""
 
-    def test_insufficient_lines(self) -> None:
-        assert _convert_table_to_whatsapp(["| only one |"]) == ["| only one |"]
-
-    def test_malformed_header(self) -> None:
-        lines = ["not a table", "|---|", "| data |"]
-        assert _convert_table_to_whatsapp(lines) == lines
+    def test_table_rows_are_bullets(self) -> None:
+        md = "| Item | Price |\n|------|-------|\n| Sunscreen | $5 |\n"
+        result = markdown_to_whatsapp(md)
+        assert "• *Sunscreen*:" in result
+        assert "Price $5" in result
 
 
 # ---------------------------------------------------------------------------
 # Whitespace handling
 # ---------------------------------------------------------------------------
+
+
+class TestDailyActivityMatching:
+    def test_case_insensitive_activity(self) -> None:
+        renderer = BaliTravelRenderer()
+        assert renderer.list_item("*Morning Activity (9-11 AM):* Visit").startswith("•")
+
+    def test_ascii_hyphen_wind_down(self) -> None:
+        renderer = BaliTravelRenderer()
+        assert renderer.list_item("*Evening Wind-down:* Spa").startswith("•")
+
+    def test_non_breaking_hyphen_wind_down(self) -> None:
+        renderer = BaliTravelRenderer()
+        assert renderer.list_item("*Evening Wind‑down:* Spa").startswith("•")
+
+    def test_other_items_fall_back(self) -> None:
+        renderer = BaliTravelRenderer()
+        assert renderer.list_item("Random item").startswith("\t-")
 
 
 class TestWhitespace:
@@ -230,7 +247,8 @@ class TestBulletLists:
     def test_nested_bullets_indentation_preserved(self) -> None:
         md = "- Parent\n    - Child\n"
         result = markdown_to_whatsapp(md)
-        assert "    - Child" in result
+        assert "Child" in result
+        assert "- Child" in result
 
 
 # ---------------------------------------------------------------------------

@@ -1,5 +1,45 @@
 # src/openai_client/errors/__init__.py
 
-from .errors import API_EXCEPTIONS, SYSTEM_EXCEPTIONS, ApiError, AppSystemError, UnknownError
+from .errors import (
+    API_EXCEPTIONS,
+    SYSTEM_EXCEPTIONS,
+    AgentAuthError,
+    AgentClientError,
+    AgentError,
+    AgentGenerationError,
+    AgentInvalidAPIKeyError,
+    AgentNetworkError,
+    AgentPermissionDeniedError,
+    AgentQuotaExceededError,
+    AgentResponseError,
+    ApiError,
+    AppSystemError,
+    CircuitBreakerError,
+    ContactAnalysisError,
+    ItineraryGenerationError,
+    QueryProcessingError,
+    UnknownError,
+    raise_ai_error,
+)
 
-__all__ = ["ApiError", "AppSystemError", "UnknownError", "API_EXCEPTIONS", "SYSTEM_EXCEPTIONS"]
+__all__ = [
+    "API_EXCEPTIONS",
+    "SYSTEM_EXCEPTIONS",
+    "AgentAuthError",
+    "AgentClientError",
+    "AgentError",
+    "AgentGenerationError",
+    "AgentInvalidAPIKeyError",
+    "AgentNetworkError",
+    "AgentPermissionDeniedError",
+    "AgentQuotaExceededError",
+    "AgentResponseError",
+    "ApiError",
+    "AppSystemError",
+    "CircuitBreakerError",
+    "ContactAnalysisError",
+    "ItineraryGenerationError",
+    "QueryProcessingError",
+    "UnknownError",
+    "raise_ai_error",
+]

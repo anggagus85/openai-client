@@ -7,6 +7,7 @@ from .typings import (
     MistralParams,
     MistralSystem,
     MistralUser,
+    Stream,
     SystemParam,
     UserParam,
 )
@@ -18,6 +19,7 @@ __all__ = [
     "MistralParams",
     "MistralSystem",
     "MistralUser",
+    "Stream",
     "SystemParam",
     "UserParam",
 ]

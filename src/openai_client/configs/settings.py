@@ -9,17 +9,22 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 ENV_FILE = Path.cwd() / ".env"
 CONFIGS_FILE = Path.cwd() / ".env.configs"
 
-WHATSAPP_NUMBER = "+6285847006743"
-
 
 class Settings(BaseSettings):
     """Application settings with validation and default values."""
+
+    DEBUG: bool = False
 
     model_config = SettingsConfigDict(
         env_file=(ENV_FILE, CONFIGS_FILE),
         env_file_encoding="utf-8",
         extra="ignore",
     )
+
+    # Branding / notification configuration (production defaults)
+    LOGO_URL: str = "https://assets.baliroam.com/baliroam/logo-mark-thick-mod_4096x_sgox7l.png"
+    COMPANY_TARGET_EMAIL: str = "example@gmail.com"
+    TZ: str = "Asia/Makassar"
 
     # AI Configuration
     INCEPTION_API_KEY: str

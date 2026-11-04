@@ -1,85 +1,65 @@
 # tests/test_itinerary_advanced.py
 
-"""Advanced tests for itinerary service - itinerary(), _generate_and_save()."""
+"""Advanced tests for production itinerary generation and file output."""
 
 import tempfile
 from asyncio import run as async_run
 from collections.abc import Generator
 from contextlib import contextmanager
+from datetime import date, timedelta
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from anyio import Path as AnyPath
 
-from openai_client.schemas.ai import ItineraryRequestMD
+from openai_client.configs import settings
+from openai_client.schemas.ai import ItineraryRequest
 from openai_client.services.itinerary import Itinerary
-from openai_client.typings import SystemParam
+
+
+def _dates(count: int) -> list[str]:
+    start = date(2026, 11, 10)
+    return [(start + timedelta(days=i)).isoformat() for i in range(count)]
 
 
 @pytest.fixture
 def mock_client() -> MagicMock:
     client = MagicMock()
-    client.model = "test-model"
-    client.base_url = "https://api.example.com"
+    client.is_mistral = False
+    client.generate = AsyncMock(return_value="# Test Itinerary\n\nDay 1: Beach")
     return client
 
 
 @pytest.fixture
-def system_param() -> SystemParam:
-    return SystemParam(role="system", content="test system")
-
-
-@pytest.fixture
-def itinerary_request() -> ItineraryRequestMD:
-    return ItineraryRequestMD(
+def itinerary_request() -> ItineraryRequest:
+    return ItineraryRequest(
         duration=5,
+        dates=_dates(5),
         interests=["beaches"],
         budget="US$ 1000",
     )
 
 
 @contextmanager
-def mock_itinerary_caller() -> Generator[None]:
-    with patch.object(Itinerary, "_generate_and_save", new_callable=AsyncMock) as mock:
-        yield mock
-
-
-@contextmanager
-def mock_web_search(results: str = "") -> Generator[MagicMock]:
-    mock = MagicMock()
-    call_tracker = MagicMock()
-
-    async def _side_effect(*_args: object, **_kwargs: object) -> str | None:
-        call_tracker(*_args, **_kwargs)
-        return results if results else None
-
-    mock_search = AsyncMock(side_effect=_side_effect)
-    mock.search = mock_search
-    mock.call_tracker = call_tracker
-    with patch("openai_client.services.itinerary.WebSearch", return_value=mock):
-        yield mock
-
-
-@contextmanager
 def temp_cwd() -> Generator[Path]:
-    with tempfile.TemporaryDirectory() as tmpdir:
-        cwd = Path(tmpdir)
-        with patch("anyio.Path.cwd", new=AsyncMock(return_value=AnyPath(tmpdir))):
-            yield cwd
+    with (
+        tempfile.TemporaryDirectory() as tmpdir,
+        patch("anyio.Path.cwd", new=AsyncMock(return_value=AnyPath(tmpdir))),
+    ):
+        yield Path(tmpdir)
 
 
 class TestGenerateAndSave:
-    def test_saves_markdown_and_text(self, mock_client: MagicMock) -> None:
-        instance = Itinerary.__new__(Itinerary)
-        instance._client = mock_client
-        instance._client.messages = []
+    def test_saves_markdown_and_text_in_debug(
+        self,
+        mock_client: MagicMock,
+        itinerary_request: ItineraryRequest,
+    ) -> None:
+        instance = Itinerary(mock_client, itinerary_request)
 
-        with temp_cwd() as cwd:
-            mock_client.call.return_value = {
-                "completion": AsyncMock(return_value="# Test Itinerary\n\nDay 1: Beach"),
-            }
-            async_run(instance._generate_and_save("completion"))
+        with temp_cwd() as cwd, patch.object(settings, "DEBUG", new=True):
+            async_run(instance.generate("Prompt"))
 
             md_path = cwd / "itinerary.md"
             txt_path = cwd / "itinerary.txt"
@@ -87,64 +67,53 @@ class TestGenerateAndSave:
             assert txt_path.exists()
             assert "# Test Itinerary" in md_path.read_text()
 
+    def test_does_not_save_without_debug(
+        self,
+        mock_client: MagicMock,
+        itinerary_request: ItineraryRequest,
+    ) -> None:
+        instance = Itinerary(mock_client, itinerary_request)
 
-class TestItinerary:
+        with temp_cwd() as cwd, patch.object(settings, "DEBUG", new=False):
+            async_run(instance.generate("Prompt"))
+            assert not (cwd / "itinerary.md").exists()
+
+
+class TestSearchFallback:
     def test_uses_search_when_available(
         self,
-        itinerary_request: ItineraryRequestMD,
         mock_client: MagicMock,
-        system_param: SystemParam,
+        itinerary_request: ItineraryRequest,
     ) -> None:
-        instance = Itinerary(mock_client, itinerary_request, system_param)
+        instance = Itinerary(mock_client, itinerary_request)
 
         with (
-            mock_web_search(results="Search results") as mock_search,
+            patch(
+                "openai_client.services.itinerary.search_bali_context",
+                new=AsyncMock(return_value="Search results"),
+            ) as search,
             temp_cwd(),
+            patch.object(settings, "DEBUG", new=False),
         ):
-            mock_client.call.return_value = {
-                "completion": AsyncMock(return_value="# Generated Itinerary"),
-            }
-            async_run(instance.generate("completion"))
+            async_run(instance.run())
 
-        mock_search.call_tracker.assert_called_once()
+        search.assert_awaited_once()
 
     def test_falls_back_when_search_fails(
         self,
-        itinerary_request: ItineraryRequestMD,
         mock_client: MagicMock,
-        system_param: SystemParam,
+        itinerary_request: ItineraryRequest,
     ) -> None:
-        instance = Itinerary(mock_client, itinerary_request, system_param)
+        instance = Itinerary(mock_client, itinerary_request)
 
         with (
-            mock_web_search(results=""),
-            temp_cwd() as cwd,
+            patch(
+                "openai_client.services.itinerary.search_bali_context",
+                new=AsyncMock(return_value=None),
+            ),
+            temp_cwd(),
+            patch.object(settings, "DEBUG", new=False),
         ):
-            mock_client.call.return_value = {
-                "completion": AsyncMock(return_value="# Fallback Itinerary"),
-            }
-            async_run(instance.generate("completion"))
+            response = async_run(instance.run())
 
-            md_path = cwd / "itinerary.md"
-            txt_path = cwd / "itinerary.txt"
-            assert md_path.exists(), "Fallback path should have created itinerary.md"
-            assert txt_path.exists(), "Fallback path should have created itinerary.txt"
-            assert "# Fallback Itinerary" in md_path.read_text()
-
-    def test_returns_early_on_empty_content(
-        self,
-        itinerary_request: ItineraryRequestMD,
-        mock_client: MagicMock,
-        system_param: SystemParam,
-    ) -> None:
-        instance = Itinerary(mock_client, itinerary_request, system_param)
-
-        with (
-            mock_web_search(results="Search results"),
-            temp_cwd() as cwd,
-        ):
-            mock_client.call.return_value = {"completion": AsyncMock(return_value="")}
-            async_run(instance.generate("completion"))
-
-            md_path = cwd / "itinerary.md"
-            assert not md_path.exists()
+        assert response.markdown.startswith("# Test Itinerary")

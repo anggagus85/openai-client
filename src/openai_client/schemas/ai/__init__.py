@@ -1,23 +1,41 @@
 # src/openai_client/schemas/ai/__init__.py
 
-from openai_client.schemas.ai.chatbot import ChatResponse, OpenAIChat, OpenAIChatRequest
-from openai_client.schemas.ai.email import AnalysisFormat, ContactAnalysisResponse, EmailInquiry
+from openai_client.schemas.ai.chatbot import (
+    DEFAULT_RESPONSE,
+    ChatMessage,
+    ChatPart,
+    ChatRequest,
+    ChatResponse,
+)
+from openai_client.schemas.ai.email import (
+    DISPOSABLE_DOMAINS,
+    AnalysisFormat,
+    ContactAnalysisResponse,
+    EmailInquiry,
+    EmailResponse,
+)
 from openai_client.schemas.ai.itinerary import (
     ItineraryMD,
-    ItineraryRequestMD,
+    ItineraryRequest,
     ItineraryRequestTXT,
+    ItineraryResponse,
     ItineraryTXT,
 )
 
 __all__ = [
     "AnalysisFormat",
-    "ContactAnalysisResponse",
+    "ChatMessage",
+    "ChatPart",
+    "ChatRequest",
     "ChatResponse",
+    "ContactAnalysisResponse",
+    "DEFAULT_RESPONSE",
+    "DISPOSABLE_DOMAINS",
     "EmailInquiry",
+    "EmailResponse",
     "ItineraryMD",
-    "ItineraryRequestMD",
+    "ItineraryRequest",
     "ItineraryRequestTXT",
+    "ItineraryResponse",
     "ItineraryTXT",
-    "OpenAIChat",
-    "OpenAIChatRequest",
 ]

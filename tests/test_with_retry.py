@@ -15,11 +15,11 @@ from openai_client.decorators.with_retry import (
 
 class TestLogBeforeSleep:
     def test_returns_callable(self) -> None:
-        callback = _log_before_sleep(max_retries=3)
+        callback = _log_before_sleep(max_attempts=3)
         assert callable(callback)
 
     def test_logs_on_retry(self) -> None:
-        callback = _log_before_sleep(max_retries=3)
+        callback = _log_before_sleep(max_attempts=3)
         mock_retry_state = MagicMock(spec=RetryCallState)
         mock_retry_state.fn = MagicMock(__name__="test_func")
         mock_retry_state.attempt_number = 2

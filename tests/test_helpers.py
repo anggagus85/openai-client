@@ -3,11 +3,12 @@
 """Tests for utility helper functions."""
 
 import tempfile
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from anyio import Path
 
-from openai_client.utils.helpers import save_to_file
+from openai_client.utils.helpers import save_itinerary_to_file, save_to_file
 
 
 class TestSaveToFile:
@@ -43,3 +44,21 @@ class TestSaveToFile:
         invalid_path = Path("/nonexistent/directory/file.txt")
         with pytest.raises(FileNotFoundError):
             await save_to_file("test", invalid_path)
+
+
+class TestSaveItineraryToFile:
+    async def test_logs_and_propagates_write_errors(
+        self,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        with (
+            patch(
+                "openai_client.utils.helpers.save_to_file",
+                new=AsyncMock(side_effect=OSError("disk full")),
+            ),
+            caplog.at_level("ERROR"),
+            pytest.raises(OSError, match="disk full"),
+        ):
+            await save_itinerary_to_file("markdown", "whatsapp")
+
+        assert "Failed to save itinerary files" in caplog.text

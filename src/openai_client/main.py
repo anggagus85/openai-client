@@ -1,5 +1,6 @@
 from asyncio import run as async_run
 from collections.abc import Awaitable, Callable
+from datetime import date, timedelta
 from enum import StrEnum
 from json import dumps, loads
 from logging import ERROR, basicConfig, getLogger
@@ -13,15 +14,9 @@ from rich.traceback import install
 from openai_client.client import MistralAI, OpenAIClient
 from openai_client.configs import ProviderConfig, settings
 from openai_client.configs import Providers as Prv
-from openai_client.schemas.ai import EmailInquiry, ItineraryRequestMD
+from openai_client.schemas.ai import EmailInquiry, ItineraryRequest
 from openai_client.services import Chatbot, EmailService, Itinerary
-from openai_client.services.prompts import (
-    EMAIL_SYSTEM_MESSAGE,
-    ITINERARY_SYSTEM_MESSAGE,
-    system_message,
-)
-from openai_client.typings import MistralSystem, SystemParam
-from openai_client.utils import save_to_file
+from openai_client.utils import save_itinerary_to_file, save_to_file
 
 basicConfig(
     level="INFO",
@@ -45,8 +40,11 @@ class Methods(StrEnum):
     STREAM = "stream"
 
 
-itinerary_req = ItineraryRequestMD(
+_ITINERARY_START = date.today()
+
+itinerary_req = ItineraryRequest(
     duration=6,
+    dates=[(_ITINERARY_START + timedelta(days=offset)).isoformat() for offset in range(6)],
     interests=["wellness", "temples", "activities"],
     budget="US$ 1500",
 )
@@ -60,22 +58,18 @@ inquiry = EmailInquiry(
 
 
 async def _openai_chat(client: OpenAIClient, method: str) -> None:
-    system_param = SystemParam(**system_message().model_dump())
-    await Chatbot(client, system_param=system_param).run(method)
+    await Chatbot(client).run(method)
 
 
 async def _openai_itinerary(client: OpenAIClient, method: str) -> None:
-    client.configs["temperature"] = 0
-    system_param = SystemParam(role="system", content=ITINERARY_SYSTEM_MESSAGE)
-    await Itinerary(client, itinerary_req, system_param).generate(method)
+    response = await Itinerary(client, itinerary_req).run(method)
+    await save_itinerary_to_file(response.markdown, response.whatsapp)
+    rprint("[b i green]itinerary saved :[/b i green]\n\nitinerary.md\nitinerary.txt")
 
 
 async def _openai_email_inquiry(client: OpenAIClient, method: str) -> None:
-    system_param = SystemParam(role="system", content=EMAIL_SYSTEM_MESSAGE)
-    service = EmailService(client, inquiry, system_param)
-    body = await service.analyze_contact(method)
-    await save_to_file(body, (await Path.cwd()) / "email_inquiry.html")
-    confirmation = await service.confirmation_message(method)
+    service = EmailService(client, inquiry)
+    confirmation = await service.run(method)
     rprint(f"[b i green]confirmation :[/b i green]\n\n{confirmation.confirmation}")
 
 
@@ -84,9 +78,6 @@ async def _openai_services(
     service: Callable[[OpenAIClient, str], Awaitable[None]],
     method: str,
 ) -> None:
-    if service is _openai_itinerary:
-        client.configs["temperature"] = 0
-
     await service(client, method)
 
 
@@ -96,22 +87,18 @@ async def _openai_services(
 
 
 async def _mistral_chat(mistral: MistralAI, method: str) -> None:
-    system_param = MistralSystem(**system_message().model_dump())
-    await Chatbot(mistral, system_param=system_param).run(method)
+    await Chatbot(mistral).run(method)
 
 
 async def _mistral_itinerary(mistral: MistralAI, method: str) -> None:
-    system_param = MistralSystem(role="system", content=ITINERARY_SYSTEM_MESSAGE)
-    mistral.configs["temperature"] = 0
-    await Itinerary(mistral, itinerary_req, system_param).generate(method)
+    response = await Itinerary(mistral, itinerary_req).run(method)
+    await save_itinerary_to_file(response.markdown, response.whatsapp)
+    rprint("[b i green]itinerary saved :[/b i green]\n\nitinerary.md\nitinerary.txt")
 
 
 async def _mistral_email_inquiry(mistral: MistralAI, method: str) -> None:
-    system_param = MistralSystem(role="system", content=EMAIL_SYSTEM_MESSAGE)
-    service = EmailService(mistral, inquiry, system_param)
-    body = await service.analyze_contact(method)
-    await save_to_file(body, (await Path.cwd()) / "email_inquiry.html")
-    confirmation = await service.confirmation_message(method)
+    service = EmailService(mistral, inquiry)
+    confirmation = await service.run(method)
     rprint(f"[b i green]confirmation :[/b i green]\n\n{confirmation.confirmation}")
 
 
@@ -147,9 +134,6 @@ async def _mistrals(
     service: Callable[[MistralAI, str], Awaitable[None]],
     method: str,
 ) -> None:
-    if service is _mistral_itinerary:
-        client.configs["temperature"] = 0
-
     await service(client, method)
 
 
@@ -218,7 +202,10 @@ async def main() -> None:
     )
     # await client.list_models(provider)
     services = [_openai_chat, _openai_itinerary, _openai_email_inquiry]
-    await _openai_services(client, services[0], Methods.STREAM)
+    try:
+        await _openai_services(client, services[0], Methods.STREAM)
+    finally:
+        await client.close()
 
 
 if __name__ == "__main__":

@@ -1,146 +1,267 @@
 # tests/test_search.py
 
-"""Tests for search service clients and helpers."""
+"""Tests for the production web search providers."""
 
 from asyncio import run as async_run
+from typing import Self
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
-
+from openai_client.configs import settings
 from openai_client.services.web_search import (
-    SearchError,
+    SearchPlan,
+    WebSearch,
     _BraveSearch,
+    _DeepseekSearch,
     _ExaSearch,
     _providers,
+    _result_score,
+    search_bali_context,
 )
 
 
-class TestSearchError:
-    def test_inherits_from_exception(self) -> None:
-        assert issubclass(SearchError, Exception)
+class MockAsyncClient:
+    def __init__(self, responses: list[MagicMock]) -> None:
+        self._responses = responses
 
-    def test_can_be_raised(self) -> None:
-        def _client_error() -> None:
-            details = "Search failed"
-            raise SearchError(details)
+    async def __aenter__(self) -> Self:
+        return self
 
-        with pytest.raises(SearchError) as context:
-            _client_error()
-        assert str(context.value) == "Search failed"
+    async def __aexit__(self, *args: object) -> None:
+        return None
+
+    async def post(self, *args: object, **kwargs: object) -> MagicMock:
+        return self._responses[-1]
+
+    async def get(self, *args: object, **kwargs: object) -> MagicMock:
+        return self._responses[-1]
 
 
-class TestExaSearchClient:
-    def test_init_defaults(self) -> None:
-        client = _ExaSearch(api_key="test-key")
+class TestSearchPlan:
+    def test_full_query_only(self) -> None:
+        provider = _ExaSearch(api_key="key")
+        plan = SearchPlan(full_query="short query", focused_queries=("a", "b"))
+        assert provider.queries_for(plan) == ["short query"]
+
+    def test_focused_queries_when_too_long(self) -> None:
+        provider = _DeepseekSearch(api_key="key")
+        plan = SearchPlan(full_query="x" * 200, focused_queries=("a", "b"))
+        assert provider.queries_for(plan) == ["a", "b"]
+
+
+class TestResultScore:
+    def test_rerank_score(self) -> None:
+        assert _result_score({"rerank_score": "0.75"}) == 0.75
+
+    def test_missing_score(self) -> None:
+        assert _result_score({}) == 0.0
+
+    def test_invalid_score(self) -> None:
+        assert _result_score({"rerank_score": "bad"}) == 0.0
+
+
+class TestDeepseekSearch:
+    def test_init(self) -> None:
+        client = _DeepseekSearch(api_key="test-key")
         assert client.api_key == "test-key"
+        assert client.base_url.endswith("/v1/tools/search")
+        assert "deepseek" in str(client)
+
+    def test_refines_query_to_limit(self) -> None:
+        client = _DeepseekSearch(api_key="key")
+        query = "Bali " * 100
+        assert len(client._refine_query(query)) <= 128
+
+    def test_merge_results_deduplicates_and_ranks(self) -> None:
+        results = [
+            [
+                {"title": "A", "url": "https://a.com", "rerank_score": 0.2},
+                {"title": "B", "url": "https://b.com", "rerank_score": 0.9},
+            ],
+            [
+                {"title": "A duplicate", "url": "https://a.com/#section", "rerank_score": 0.4},
+                {"title": "C", "url": "https://c.com", "rerank_score": 0.5},
+            ],
+        ]
+        merged = _DeepseekSearch._merge_results(results, {})
+        assert [item["title"] for item in merged] == ["B", "C", "A duplicate"]
+
+    def test_formatted_result_contains_sources(self) -> None:
+        results = [
+            {
+                "title": "Bali Guide",
+                "url": "https://example.com",
+                "content": "x" * 10000,
+                "date": "2026-11-01",
+            },
+        ]
+        formatted = _DeepseekSearch._formatted_result(results, {"max_content_chars": 10})
+        assert "Latest Bali Travel Information:" in formatted
+        assert "Sources & Citations:" in formatted
+        assert "[1] Bali Guide: https://example.com (2026-11-01)" in formatted
+        assert "x" * 10000 not in formatted
+
+    async def test_search_success(self) -> None:
+        response = MagicMock()
+        response.json.return_value = {
+            "results": [{"title": "Bali", "url": "https://bali.com", "content": "info"}],
+        }
+        response.raise_for_status.return_value = None
+        client = _DeepseekSearch(api_key="key")
+
+        with patch(
+            "openai_client.services.web_search.AsyncClient",
+            return_value=MockAsyncClient([response]),
+        ):
+            success, result = await client.search("Bali", {})
+
+        assert success is True
+        assert "Bali" in result
+
+    async def test_search_failure(self) -> None:
+        client = _DeepseekSearch(api_key="key")
+        with patch(
+            "openai_client.services.web_search.AsyncClient",
+            return_value=MockAsyncClient([MagicMock()]),
+        ) as mock_cls:
+            mock_cls.return_value.post = AsyncMock(side_effect=ConnectionError("down"))
+            success, result = await client.search("Bali", {})
+
+        assert success is False
+        assert "Search error" in result
+
+
+class TestExaSearch:
+    def test_init(self) -> None:
+        client = _ExaSearch(api_key="test-key")
         assert client.base_url == "https://api.exa.ai/search"
-
-    def test_init_custom_url(self) -> None:
-        client = _ExaSearch(api_key="test-key")
-        client.base_url = "https://custom.exa.ai"
-        assert client.base_url == "https://custom.exa.ai"
-
-    def test_str(self) -> None:
-        client = _ExaSearch(api_key="test-key")
         assert "exa" in str(client)
 
     async def test_search_success(self) -> None:
-        mock_response = MagicMock()
-        mock_response.json.return_value = {
-            "results": [
-                {"title": "Bali Beach", "url": "https://example.com", "text": "Beautiful beach"},
-            ],
-        }
-        mock_response.raise_for_status.return_value = None
-        mock_client = AsyncMock()
-        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-
-    def test_search_failure(self) -> None:
-        mock_client = AsyncMock()
-        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-        mock_client.__aexit__ = AsyncMock(return_value=False)
-        mock_client.post = AsyncMock(side_effect=ConnectionError("Network error"))
-
-        async def _run_test() -> None:
-            with patch("openai_client.services.web_search.AsyncClient", return_value=mock_client):
-                success, result = await _ExaSearch(api_key="key").search("Bali")
-                assert success is False
-                assert "Search error" in result
-
-        async_run(_run_test())
-
-    def test_process_results(self) -> None:
+        response = MagicMock()
+        response.json.return_value = {"output": {"content": "Exa result"}}
+        response.raise_for_status.return_value = None
         client = _ExaSearch(api_key="key")
-        data = {
-            "results": [
-                {"title": "Place 1", "url": "https://a.com", "text": "Details about place 1"},
-                {"title": "Place 2", "url": "https://b.com", "text": "Details about place 2"},
-            ],
-        }
-        result = client._process_results(data)
-        assert "1. **Place 1**" in result
-        assert "2. **Place 2**" in result
-        assert "https://a.com" in result
 
-    def test_process_results_empty(self) -> None:
+        with patch(
+            "openai_client.services.web_search.AsyncClient",
+            return_value=MockAsyncClient([response]),
+        ):
+            success, result = await client.search("Bali", {"num_results": 3})
+
+        assert success is True
+        assert result == "Exa result"
+
+    async def test_search_empty_output(self) -> None:
+        response = MagicMock()
+        response.json.return_value = {}
+        response.raise_for_status.return_value = None
         client = _ExaSearch(api_key="key")
-        result = client._process_results({"results": []})
+
+        with patch(
+            "openai_client.services.web_search.AsyncClient",
+            return_value=MockAsyncClient([response]),
+        ):
+            success, result = await client.search("Bali", {})
+
+        assert success is False
         assert result == ""
 
+    async def test_search_failure(self) -> None:
+        client = _ExaSearch(api_key="key")
+        with patch(
+            "openai_client.services.web_search.AsyncClient",
+            return_value=MockAsyncClient([MagicMock()]),
+        ) as mock_cls:
+            mock_cls.return_value.post = AsyncMock(side_effect=ConnectionError("down"))
+            success, result = await client.search("Bali", {})
 
-class TestBraveSearchClient:
-    def test_init_defaults(self) -> None:
+        assert success is False
+        assert "Search error" in result
+
+
+class TestBraveSearch:
+    def test_init(self) -> None:
         client = _BraveSearch(api_key="test-key")
-        assert client.api_key == "test-key"
         assert client.base_url == "https://api.search.brave.com/res/v1/web/search"
-
-    def test_str(self) -> None:
-        client = _BraveSearch(api_key="test-key")
         assert "brave" in str(client)
 
-    def test_search_success(self) -> None:
-        mock_response = MagicMock()
-        mock_response.json.return_value = {
+    async def test_search_success(self) -> None:
+        response = MagicMock()
+        response.json.return_value = {
             "web": {
                 "results": [
                     {"title": "Bali Guide", "url": "https://example.com", "description": "A guide"},
                 ],
             },
         }
-        mock_response.raise_for_status.return_value = None
-        mock_client = AsyncMock()
-        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-        mock_client.__aexit__ = AsyncMock(return_value=False)
-        mock_client.get = AsyncMock(return_value=mock_response)
+        response.raise_for_status.return_value = None
+        client = _BraveSearch(api_key="key")
 
-        async def _run_test() -> None:
-            with patch("openai_client.services.web_search.AsyncClient", return_value=mock_client):
-                success, result = await _BraveSearch(api_key="key").search("Bali travel")
-                assert success is True
-                assert "Bali Guide" in result
+        with patch(
+            "openai_client.services.web_search.AsyncClient",
+            return_value=MockAsyncClient([response]),
+        ):
+            success, result = await client.search("Bali travel", {})
 
-        async_run(_run_test())
+        assert success is True
+        assert "Bali Guide" in result
+        assert "Sources & Citations:" in result
 
-    def test_search_failure(self) -> None:
-        mock_client = AsyncMock()
-        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-        mock_client.__aexit__ = AsyncMock(return_value=False)
-        mock_client.get = AsyncMock(side_effect=ConnectionError("Network error"))
+    async def test_search_no_results(self) -> None:
+        response = MagicMock()
+        response.json.return_value = {}
+        response.raise_for_status.return_value = None
+        client = _BraveSearch(api_key="key")
 
-        async def _run_test() -> None:
-            with patch("openai_client.services.web_search.AsyncClient", return_value=mock_client):
-                success, result = await _BraveSearch(api_key="key").search("Bali")
-                assert success is False
-                assert "Search error" in result
+        with patch(
+            "openai_client.services.web_search.AsyncClient",
+            return_value=MockAsyncClient([response]),
+        ):
+            success, result = await client.search("Bali", {})
 
-        async_run(_run_test())
+        assert success is False
+        assert result == ""
 
 
 class TestProviders:
-    def test_returns_list(self) -> None:
-        result = _providers()
-        assert isinstance(result, list)
-        assert len(result) > 0
-        for provider in result:
-            assert hasattr(provider, "api_key")
-            assert callable(getattr(provider, "search", None))
+    def test_returns_all_configured_providers(self) -> None:
+        with (
+            patch.object(settings, "DEEPSEEK_API_KEY", "deepseek"),
+            patch.object(settings, "EXA_API_KEY", "exa"),
+            patch.object(settings, "BRAVE_API_KEY", "brave"),
+        ):
+            providers = _providers()
+
+        assert [type(provider) for provider in providers] == [
+            _DeepseekSearch,
+            _ExaSearch,
+            _BraveSearch,
+        ]
+
+
+class TestWebSearch:
+    def test_falls_back_to_next_provider(self) -> None:
+        first = MagicMock()
+        first.__str__ = lambda self: "first"  # type: ignore[method-assign]
+        first.search_many = AsyncMock(return_value=(False, "nope"))
+        second = MagicMock()
+        second.__str__ = lambda self: "second"  # type: ignore[method-assign]
+        second.search_many = AsyncMock(return_value=(True, "result"))
+
+        with patch("openai_client.services.web_search._providers", return_value=[first, second]):
+            result = async_run(WebSearch("test", {}).search("query"))
+
+        assert result == "result"
+
+
+class TestSearchBaliContext:
+    def test_prefixes_query_with_bali_latest(self) -> None:
+        mock_search = MagicMock()
+        mock_search.search = AsyncMock(return_value="results")
+
+        with patch("openai_client.services.web_search.WebSearch", return_value=mock_search):
+            result = async_run(search_bali_context("beaches", "Agent", {}))
+
+        assert result == "results"
+        plan = mock_search.search.call_args.args[0]
+        assert plan.full_query == "Bali latest beaches"

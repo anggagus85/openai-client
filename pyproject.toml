@@ -16,6 +16,7 @@ dependencies = [
   "mdformat-gfm>=1.0.0",
   "mdformat-gfm-alerts>=2.0.0",
   "mistralai>=2.3.0",
+  "mistune>=3.0.0",
   "openai>=1.102.0",
   "pydantic-settings>=2.13.1",
   "pydantic[email]>=2.11.7",
