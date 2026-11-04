@@ -2,9 +2,11 @@
 
 from collections.abc import AsyncGenerator, AsyncIterator, Callable
 from contextlib import asynccontextmanager
+from json import dumps, loads
 from logging import getLogger
 from typing import Any, Literal, overload
 
+from anyio import Path
 from mistralai.client import Mistral
 from mistralai.client.errors import MistralError
 from rich import print as rprint
@@ -19,6 +21,7 @@ from openai_client.errors import (
     UnknownError,
 )
 from openai_client.typings import MistralAssistant, MistralParams
+from openai_client.utils import save_to_file
 from openai_client.utils.async_utils import close_async_stream
 
 logger = getLogger(__name__)
@@ -243,8 +246,27 @@ class MistralAI(Mistral):
         self.messages.append(MistralAssistant(role="assistant", content=content))
 
     async def list_models(self) -> None:
-        list_models_response = await self.models.list_async()
-        # rprint(list_models_response)
-        for data in list_models_response.data:
-            rprint(data)
-            break
+        data: list[dict[str, Any]] = self.models.list().model_dump()["data"]
+        models: list[dict[str, str]] = []
+
+        for entries in data:
+            if not (capabilities := entries["capabilities"])["completion_chat"]:
+                continue
+            if "labs" in (_id := entries["id"]):
+                continue
+            models.append(
+                {
+                    "id": _id,
+                    "description": entries.get("description") or "",
+                    "max_context_length": entries["max_context_length"],
+                    "vision": capabilities["vision"],
+                },
+            )
+
+        path = Path("models.json")
+        all_models: dict[str, list[Any]] = (
+            loads(await path.read_text(encoding="utf-8")) if await path.exists() else {}
+        )
+        all_models["mistral"] = models
+
+        await save_to_file(dumps(all_models, indent=4), (await Path.cwd()) / "models.json")

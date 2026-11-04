@@ -1,11 +1,8 @@
 from asyncio import run as async_run
 from datetime import date, timedelta
 from enum import StrEnum
-from json import dumps, loads
 from logging import ERROR, basicConfig, getLogger
-from typing import Any
 
-from anyio import Path
 from rich import print as rprint
 from rich.logging import RichHandler
 from rich.traceback import install
@@ -15,7 +12,7 @@ from openai_client.configs import ProviderConfig, settings
 from openai_client.configs import Providers as Prv
 from openai_client.schemas.ai import EmailInquiry, ItineraryRequest
 from openai_client.services import Chatbot, EmailService, Itinerary
-from openai_client.utils import save_itinerary_to_file, save_to_file
+from openai_client.utils import save_itinerary_to_file
 
 basicConfig(
     level="INFO",
@@ -93,33 +90,6 @@ async def _mistral_email_inquiry(mistral: MistralAI) -> None:
     rprint(f"[b i green]confirmation :[/b i green]\n\n{confirmation.confirmation}")
 
 
-async def _mistrals_models(mistral: MistralAI) -> None:
-    data: list[dict[str, Any]] = mistral.models.list().model_dump()["data"]
-    models: list[dict[str, str]] = []
-
-    for entries in data:
-        if not (capabilities := entries["capabilities"])["completion_chat"]:
-            continue
-        if "labs" in (_id := entries["id"]):
-            continue
-        models.append(
-            {
-                "id": _id,
-                "description": entries.get("description") or "",
-                "max_context_length": entries["max_context_length"],
-                "vision": capabilities["vision"],
-            },
-        )
-
-    path = Path("models.json")
-    all_models: dict[str, list[Any]] = (
-        loads(await path.read_text(encoding="utf-8")) if await path.exists() else {}
-    )
-    all_models["mistral"] = models
-
-    await save_to_file(dumps(all_models, indent=4), (await Path.cwd()) / "models.json")
-
-
 def _require_api_key(config: ProviderConfig, provider: Prv) -> str:
     """Return the provider's API key, failing loudly when it was not configured."""
     if not (api_key := config["api_key"]):
@@ -172,7 +142,7 @@ async def main() -> None:
     #     base_url=mistral_config["base_url"],
     #     model=mistral_config["model"],
     # )
-    # # await _mistrals_models(mistral)
+    # # await mistral.list_models()
 
     # try:
     #     await _mistral_chat(mistral, Methods.STREAM)
