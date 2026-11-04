@@ -122,7 +122,6 @@ class MistralAI(Mistral):
                 model=self._model,
                 response_format={"type": "text"},
                 **configs,
-                reasoning_effort="high",
             )
 
         if not (choices := completion.choices):
@@ -140,7 +139,6 @@ class MistralAI(Mistral):
                     model=self._model,
                     response_format={"type": "text"},
                     **configs,
-                    reasoning_effort="high",
                 )
                 async for chunk in stream:
                     yield _MistralChunk(chunk)
