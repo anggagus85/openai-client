@@ -10,6 +10,7 @@ import pytest
 from openai import APIConnectionError, AuthenticationError
 
 from openai_client.client.openai_client import OpenAIClient
+from openai_client.configs import Providers as Prv
 from openai_client.configs import settings
 from openai_client.decorators.circuit_breaker import agent_cb
 from openai_client.errors import AgentAuthError, AgentNetworkError
@@ -27,6 +28,7 @@ def _make_client() -> OpenAIClient:
         api_key="test-key",
         base_url="https://api.example.com/v1",
         model="test-model",
+        prv=Prv.INCEPTION,
     )
     object.__setattr__(instance, "chat", AsyncMock())
     return instance

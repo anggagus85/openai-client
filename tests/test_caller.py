@@ -13,6 +13,7 @@ from openai import (
 )
 
 from openai_client.client.openai_client import OpenAIClient
+from openai_client.configs import Providers as Prv
 from openai_client.errors import (
     AgentAuthError,
     AgentNetworkError,
@@ -31,6 +32,7 @@ class TestClientInit:
             api_key="test-key",
             base_url="https://api.example.com/v1",
             model="test-model",
+            prv=Prv.INCEPTION,
         )
         assert client.model == "test-model"
         assert client.is_mistral is False
@@ -40,6 +42,7 @@ class TestClientInit:
             api_key="test-key",
             base_url="https://api.example.com/v1",
             model="test-model",
+            prv=Prv.INCEPTION,
         )
         assert "test-model" in str(client)
         assert "https://api.example.com/v1" in str(client)
