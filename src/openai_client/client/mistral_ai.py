@@ -247,8 +247,8 @@ class MistralAI(Mistral):
 
     async def list_models(self) -> None:
         data: list[dict[str, Any]] = self.models.list().model_dump()["data"]
-        models: list[dict[str, str]] = []
 
+        models: list[dict[str, str]] = []
         for entries in data:
             if not (capabilities := entries["capabilities"])["completion_chat"]:
                 continue
@@ -270,3 +270,6 @@ class MistralAI(Mistral):
         all_models["mistral"] = models
 
         await save_to_file(dumps(all_models, indent=4), (await Path.cwd()) / "models.json")
+        rprint(
+            f"[b green] All [b i magenta]Mistral[/b i magenta] models have been collected in {path}",
+        )

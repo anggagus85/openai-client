@@ -1,11 +1,14 @@
 # src/openai_client/client/openai_client.py
 
 from collections.abc import AsyncGenerator, Callable
+from json import dumps, loads
 from logging import getLogger
 from typing import Any, Literal, cast, overload
 
+from anyio import Path
 from openai import AsyncOpenAI, AsyncStream
 from openai.types.chat import ChatCompletionChunk
+from rich import print as rprint
 
 from openai_client.configs import Providers as Prv
 from openai_client.configs import settings
@@ -14,6 +17,7 @@ from openai_client.decorators.with_retry import with_retry
 from openai_client.errors import AgentNetworkError, raise_ai_error
 from openai_client.typings import Stream
 from openai_client.utils.async_utils import close_async_stream
+from openai_client.utils.files import save_to_file
 
 logger = getLogger(__name__)
 
@@ -30,10 +34,19 @@ class OpenAIClient(AsyncOpenAI):
 
     is_mistral = False
 
-    def __init__(self, api_key: str, base_url: str, model: str, timeout: float = 300.0) -> None:
+    def __init__(
+        self,
+        api_key: str,
+        base_url: str,
+        model: str,
+        prv: Prv,
+        timeout: float = 300.0,
+    ) -> None:
         super().__init__(api_key=api_key, base_url=base_url, timeout=timeout)
         self.model = model
         self._closed = False
+        self._prv = prv
+        self._prv_name = prv.__str__()
 
     def __str__(self) -> str:
         return f"model '{self.model}' via {self.base_url}"
@@ -158,18 +171,40 @@ class OpenAIClient(AsyncOpenAI):
         else:
             logger.info("AI client closed successfully")
 
-    async def list_models(self, provider: str) -> list[str]:
+    def _provider_name(self) -> str:
+
+        providers = {
+            "atmorouter": "Atmo Router",
+            "deepseek": "Deepseek",
+            "inception": "Inception",
+            "openrouter": "Open Router",
+            "nvidia": "NVIDIA",
+            "mistral": "Mistral",
+        }
+
+        return providers[self._prv_name]
+
+    async def list_models(self) -> None:
         model_list = await self.models.list()
 
-        lists: list[str] = []
+        models: list[str] = []
         for model in model_list.data:
             model_id = model.id
             if any(x in model_id for x in ("-coder", "-it", "embed")):
                 continue
             # OpenRouter is the only provider where the free tier is worth listing;
             # every other provider keeps its full catalogue.
-            if provider == Prv.OPENROUTER and ":free" not in model_id:
+            if self._prv == Prv.OPENROUTER and ":free" not in model_id:
                 continue
-            lists.append(model_id)
+            models.append(model_id)
 
-        return lists
+        path = Path("models.json")
+        all_models: dict[str, list[str]] = (
+            loads(await path.read_text(encoding="utf-8")) if await path.exists() else {}
+        )
+        all_models[self._prv_name] = models
+
+        await save_to_file(dumps(all_models, indent=4), (await Path.cwd()) / "models.json")
+        rprint(
+            f"[b green] All [b i magenta]{self._provider_name()}[/b i magenta] models have been collected in {path}",
+        )

@@ -142,27 +142,28 @@ async def main() -> None:
     #     base_url=mistral_config["base_url"],
     #     model=mistral_config["model"],
     # )
-    # # await mistral.list_models()
 
     # try:
+    #     # await mistral.list_models()
     #     await _mistral_chat(mistral, Methods.STREAM)
     #     # await _mistral_itinerary(mistral)
     #     # await _mistral_email_inquiry(mistral)
     # finally:
     #     await mistral.close()
 
-    provider = Prv.INCEPTION
+    provider = Prv.OPENROUTER
     config = kwargs[provider]
     client = OpenAIClient(
         api_key=_require_api_key(config, provider),
         base_url=config["base_url"],
         model=config["model"],
+        prv=provider,
     )
-    # await client.list_models(provider)
     try:
+        # await client.list_models()
         await _openai_chat(client, Methods.STREAM)
-        # await _openai_itinerary(client)
-        # await _openai_email_inquiry(client)
+    #     # await _openai_itinerary(client)
+    #     # await _openai_email_inquiry(client)
     finally:
         await client.close()
 
