@@ -27,9 +27,9 @@ class OpenAIClient(AsyncOpenAI):
     OpenAI-compatible client mirroring the production BaliRoam implementation.
 
     The completion and streaming paths mirror ``OpenAICompatible`` from the
-    backend: high reasoning effort, thinking enabled via ``extra_body``,
-    circuit-breaker protection, retry with exponential backoff, and explicit
-    stream cleanup.
+    backend: high reasoning effort and thinking enabled via ``extra_body`` for
+    providers that support them, circuit-breaker protection, retry with
+    exponential backoff, and explicit stream cleanup.
     """
 
     is_mistral = False
@@ -51,13 +51,18 @@ class OpenAIClient(AsyncOpenAI):
     def __str__(self) -> str:
         return f"model '{self.model}' via {self.base_url}"
 
+    def _reasoning_options(self) -> dict[str, Any]:
+        """Return reasoning extensions only for providers that accept them."""
+        if self._prv == Prv.MISTRAL:
+            return {}
+        return {
+            "reasoning_effort": "high",
+            "extra_body": {"thinking": {"type": "enabled"}},
+        }
+
     def _get_completion_func(self, configs: dict[str, Any]) -> Callable:
-        return lambda: self.chat.completions.create(
-            model=self.model,
-            **configs,
-            reasoning_effort="high",
-            extra_body={"thinking": {"type": "enabled"}},
-        )
+        request = {**configs, **self._reasoning_options()}
+        return lambda: self.chat.completions.create(model=self.model, **request)
 
     @overload
     async def generate(

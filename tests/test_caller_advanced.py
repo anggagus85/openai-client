@@ -23,12 +23,12 @@ async def _reset_breaker() -> AsyncIterator[None]:
     await agent_cb.reset()
 
 
-def _make_client() -> OpenAIClient:
+def _make_client(prv: Prv = Prv.INCEPTION) -> OpenAIClient:
     instance = OpenAIClient(
         api_key="test-key",
         base_url="https://api.example.com/v1",
         model="test-model",
-        prv=Prv.INCEPTION,
+        prv=prv,
     )
     object.__setattr__(instance, "chat", AsyncMock())
     return instance
@@ -172,6 +172,41 @@ class TestGenerateStreaming:
             await instance.generate({"messages": []}, stream=True)
 
         assert create.await_count == settings.AI_MAX_RETRIES
+
+
+class TestMistralOpenAICompatible:
+    """Mistral rejects OpenAI-only reasoning fields with 422/400."""
+
+    async def test_non_streaming_omits_reasoning_options(self) -> None:
+        instance = _make_client(Prv.MISTRAL)
+        completion = MagicMock()
+        completion.choices = [MagicMock()]
+        completion.choices[0].message.content = "ok"
+        create = _mock_chat(instance).completions.create
+        create.return_value = completion
+
+        await instance.generate({"messages": [], "temperature": 0.0})
+
+        kwargs = create.call_args.kwargs
+        assert kwargs["model"] == "test-model"
+        assert "reasoning_effort" not in kwargs
+        assert "extra_body" not in kwargs
+
+    async def test_streaming_omits_reasoning_options(self) -> None:
+        async def stream() -> AsyncIterator[MagicMock]:
+            yield MagicMock()
+
+        instance = _make_client(Prv.MISTRAL)
+        create = _mock_chat(instance).completions.create
+        create.return_value = stream()
+
+        generator = await instance.generate({"messages": []}, stream=True)
+        _ = [chunk async for chunk in generator]
+
+        kwargs = create.call_args.kwargs
+        assert kwargs["stream"] is True
+        assert "reasoning_effort" not in kwargs
+        assert "extra_body" not in kwargs
 
 
 class TestCloseCompletionStream:
