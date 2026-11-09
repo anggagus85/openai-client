@@ -160,10 +160,10 @@ async def main() -> None:
         prv=provider,
     )
     try:
-        # await client.list_models()
-        await _openai_chat(client, Methods.STREAM)
-    #     # await _openai_itinerary(client)
-    #     # await _openai_email_inquiry(client)
+        await client.list_models()
+        # await _openai_chat(client, Methods.STREAM)
+        # await _openai_itinerary(client)
+        # await _openai_email_inquiry(client)
     finally:
         await client.close()
 

@@ -11,6 +11,7 @@ from openai_client.services.web_search.exa import _ExaSearch
 
 logger = getLogger(__name__)
 
+
 class WebSearch:
     def __init__(self, operation: str, configs: dict[str, Any]) -> None:
         self._providers = _providers()
@@ -39,14 +40,14 @@ class WebSearch:
 
 def _providers() -> list[_SearchProvider]:
     clients: list[_SearchProvider] = []
-    if settings.DEEPSEEK_API_KEY:
-        clients.append(_DeepseekSearch(api_key=settings.DEEPSEEK_API_KEY))
-    else:
-        logger.warning("DEEPSEEK_API_KEY not available, skipping DeepSeek search provider")
     if settings.EXA_API_KEY:
         clients.append(_ExaSearch(api_key=settings.EXA_API_KEY))
     else:
         logger.warning("EXA_API_KEY not available, skipping Exa provider")
+    if settings.DEEPSEEK_API_KEY:
+        clients.append(_DeepseekSearch(api_key=settings.DEEPSEEK_API_KEY))
+    else:
+        logger.warning("DEEPSEEK_API_KEY not available, skipping DeepSeek search provider")
     if settings.BRAVE_API_KEY:
         clients.append(_BraveSearch(api_key=settings.BRAVE_API_KEY))
     else:
