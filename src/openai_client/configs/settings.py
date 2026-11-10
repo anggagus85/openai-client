@@ -65,6 +65,16 @@ class Settings(BaseSettings):
 settings = Settings()
 
 
+_PROVIDER_DISPLAY_NAMES: dict[str, str] = {
+    "atmorouter": "Atmo Router",
+    "deepseek": "Deepseek",
+    "inception": "Inception",
+    "openrouter": "Open Router",
+    "nvidia": "NVIDIA",
+    "mistral": "Mistral",
+}
+
+
 class Providers(StrEnum):
     ATMOROUTER = "atmorouter"
     DEEPSEEK = "deepseek"
@@ -72,6 +82,10 @@ class Providers(StrEnum):
     OPENROUTER = "openrouter"
     NVIDIA = "nvidia"
     MISTRAL = "mistral"
+
+    @property
+    def display_name(self) -> str:
+        return _PROVIDER_DISPLAY_NAMES[self.value]
 
 
 class ProviderConfig(TypedDict):

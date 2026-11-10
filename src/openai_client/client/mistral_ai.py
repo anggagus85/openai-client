@@ -178,14 +178,26 @@ class MistralAI(Mistral):
             await close_async_stream(stream)
 
     async def close(self) -> None:
-        exit_sync = getattr(self, "__exit__", None)
         exit_async = getattr(self, "__aexit__", None)
+        exit_sync = getattr(self, "__exit__", None)
+        failed = False
+
+        try:
+            if callable(exit_async):
+                await exit_async(None, None, None)
+        except Exception:
+            failed = True
+            logger.exception("Failed to close AI async client")
+
         try:
             if callable(exit_sync):
                 exit_sync(None, None, None)
-        finally:
-            if callable(exit_async):
-                await exit_async(None, None, None)
+        except Exception:
+            failed = True
+            logger.exception("Failed to close AI sync client")
+
+        if not failed:
+            logger.info("AI client closed successfully")
 
     @with_retry(
         max_attempts=settings.AI_MAX_RETRIES,
@@ -245,7 +257,7 @@ class MistralAI(Mistral):
     def _append_assistant_message(self, content: str) -> None:
         self.messages.append(MistralAssistant(role="assistant", content=content))
 
-    async def list_models(self) -> None:
+    async def list_models(self, path: Path) -> None:
         data: list[dict[str, Any]] = self.models.list().model_dump()["data"]
 
         models: list[dict[str, str]] = []
@@ -263,13 +275,9 @@ class MistralAI(Mistral):
                 },
             )
 
-        path = Path("models.json")
         all_models: dict[str, list[Any]] = (
             loads(await path.read_text(encoding="utf-8")) if await path.exists() else {}
         )
         all_models["mistral"] = models
 
-        await save_to_file(dumps(all_models, indent=4), (await Path.cwd()) / "models.json")
-        rprint(
-            f"[b green] All [b i magenta]Mistral[/b i magenta] models have been collected in {path}",
-        )
+        await save_to_file(dumps(all_models, indent=4), path)

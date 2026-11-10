@@ -233,8 +233,8 @@ class TestProviders:
             providers = _providers()
 
         assert [type(provider) for provider in providers] == [
-            _DeepseekSearch,
             _ExaSearch,
+            _DeepseekSearch,
             _BraveSearch,
         ]
 

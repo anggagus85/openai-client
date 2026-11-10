@@ -8,7 +8,6 @@ from typing import Any, Literal, cast, overload
 from anyio import Path
 from openai import AsyncOpenAI, AsyncStream
 from openai.types.chat import ChatCompletionChunk
-from rich import print as rprint
 
 from openai_client.configs import Providers as Prv
 from openai_client.configs import settings
@@ -176,20 +175,7 @@ class OpenAIClient(AsyncOpenAI):
         else:
             logger.info("AI client closed successfully")
 
-    def _provider_name(self) -> str:
-
-        providers = {
-            "atmorouter": "Atmo Router",
-            "deepseek": "Deepseek",
-            "inception": "Inception",
-            "openrouter": "Open Router",
-            "nvidia": "NVIDIA",
-            "mistral": "Mistral",
-        }
-
-        return providers[self._prv_name]
-
-    async def list_models(self) -> None:
+    async def list_models(self, path: Path) -> None:
         model_list = await self.models.list()
 
         models: list[str] = []
@@ -203,13 +189,9 @@ class OpenAIClient(AsyncOpenAI):
                 continue
             models.append(model_id)
 
-        path = Path("models.json")
         all_models: dict[str, list[str]] = (
             loads(await path.read_text(encoding="utf-8")) if await path.exists() else {}
         )
         all_models[self._prv_name] = models
 
-        await save_to_file(dumps(all_models, indent=4), (await Path.cwd()) / "models.json")
-        rprint(
-            f"[b green] All [b i magenta]{self._provider_name()}[/b i magenta] models have been collected in {path}",
-        )
+        await save_to_file(dumps(all_models, indent=4), path)

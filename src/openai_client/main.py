@@ -3,6 +3,7 @@ from datetime import date, timedelta
 from enum import StrEnum
 from logging import ERROR, basicConfig, getLogger
 
+from anyio import Path
 from rich import print as rprint
 from rich.logging import RichHandler
 from rich.traceback import install
@@ -98,6 +99,49 @@ def _require_api_key(config: ProviderConfig, provider: Prv) -> str:
     return api_key
 
 
+def _collected(display_name: str, path: Path) -> str:
+
+    return (
+        f"[b green] All [b i magenta]{display_name}[/b i magenta] models have been collected in {path}"
+    )
+
+
+async def _collect_models(kwargs: dict[Prv, ProviderConfig]) -> None:
+
+    path = Path("models.json")
+    for prv, config in kwargs.items():
+        display_name = prv.display_name
+        try:
+            api_key = _require_api_key(config, prv)
+        except ValueError as e:
+            logger.warning("%s", e)
+            continue
+
+        if prv == Prv.MISTRAL:
+            client: MistralAI | OpenAIClient = MistralAI(
+                api_key=api_key,
+                model=config["model"],
+                base_url=config["base_url"],
+            )
+        else:
+            client = OpenAIClient(
+                api_key=api_key,
+                base_url=config["base_url"],
+                model=config["model"],
+                prv=prv,
+            )
+
+        try:
+            await client.list_models(path)
+        except Exception:
+            logger.exception("Failed to collect %s models", display_name)
+            continue
+        finally:
+            await client.close()
+
+        rprint(_collected(display_name, path))
+
+
 async def main() -> None:
 
     kwargs: dict[Prv, ProviderConfig] = {
@@ -144,28 +188,28 @@ async def main() -> None:
     # )
 
     # try:
-    #     # await mistral.list_models()
     #     await _mistral_chat(mistral, Methods.STREAM)
     #     # await _mistral_itinerary(mistral)
     #     # await _mistral_email_inquiry(mistral)
     # finally:
     #     await mistral.close()
 
-    provider = Prv.OPENROUTER
-    config = kwargs[provider]
-    client = OpenAIClient(
-        api_key=_require_api_key(config, provider),
-        base_url=config["base_url"],
-        model=config["model"],
-        prv=provider,
-    )
-    try:
-        await client.list_models()
-        # await _openai_chat(client, Methods.STREAM)
-        # await _openai_itinerary(client)
-        # await _openai_email_inquiry(client)
-    finally:
-        await client.close()
+    # provider = Prv.ATMOROUTER
+    # config = kwargs[provider]
+    # client = OpenAIClient(
+    #     api_key=_require_api_key(config, provider),
+    #     base_url=config["base_url"],
+    #     model=config["model"],
+    #     prv=provider,
+    # )
+    # try:
+    #     await _openai_chat(client, Methods.STREAM)
+    #     # await _openai_itinerary(client)
+    #     # await _openai_email_inquiry(client)
+    # finally:
+    #     await client.close()
+
+    await _collect_models(kwargs)
 
 
 if __name__ == "__main__":

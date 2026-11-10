@@ -8,6 +8,7 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from anyio import Path as AnyPath
 
 from openai_client.client.openai_client import OpenAIClient
 from openai_client.configs import Providers as Prv
@@ -49,7 +50,7 @@ class TestProviderDisplayName:
         ],
     )
     def test_reports_readable_name(self, prv: Prv, expected: str) -> None:
-        assert _client(prv)._provider_name() == expected
+        assert prv.display_name == expected
 
 
 class TestListModelsPersistence:
@@ -62,7 +63,7 @@ class TestListModelsPersistence:
         client = _client(Prv.INCEPTION)
         _listing(client, "mercury-3", "mercury-coder-small", "mercury-it", "text-embed-3")
 
-        await client.list_models()
+        await client.list_models(AnyPath(CATALOGUE))
 
         assert _read(tmp_path / CATALOGUE) == {"inception": ["mercury-3"]}
 
@@ -75,7 +76,7 @@ class TestListModelsPersistence:
         client = _client(Prv.NVIDIA)
         _listing(client, "nemotron-4")
 
-        await client.list_models()
+        await client.list_models(AnyPath(CATALOGUE))
 
         assert _read(tmp_path / CATALOGUE) == {"nvidia": ["nemotron-4"]}
 
@@ -89,7 +90,7 @@ class TestListModelsPersistence:
         client = _client(Prv.DEEPSEEK)
         _listing(client, "deepseek-v4-pro")
 
-        await client.list_models()
+        await client.list_models(AnyPath(CATALOGUE))
 
         assert _read(tmp_path / CATALOGUE) == {
             "inception": ["mercury-2"],
@@ -109,7 +110,7 @@ class TestListModelsPersistence:
         client = _client(Prv.INCEPTION)
         _listing(client, "mercury-3")
 
-        await client.list_models()
+        await client.list_models(AnyPath(CATALOGUE))
 
         assert _read(tmp_path / CATALOGUE) == {
             "inception": ["mercury-3"],
@@ -125,23 +126,7 @@ class TestListModelsPersistence:
         client = _client(Prv.OPENROUTER)
         _listing(client, "meta/llama:free", "meta/llama", "zai/glm-5.3:free")
 
-        await client.list_models()
+        await client.list_models(AnyPath(CATALOGUE))
 
         expected = {"openrouter": ["meta/llama:free", "zai/glm-5.3:free"]}
         assert _read(tmp_path / CATALOGUE) == expected
-
-    async def test_announces_where_models_were_collected(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-        capsys: pytest.CaptureFixture[str],
-    ) -> None:
-        monkeypatch.chdir(tmp_path)
-        client = _client(Prv.ATMOROUTER)
-        _listing(client, "ag/gemini-4-argon")
-
-        await client.list_models()
-
-        output = capsys.readouterr().out
-        assert "Atmo Router" in output
-        assert CATALOGUE in output
