@@ -37,13 +37,13 @@ class Methods(StrEnum):
     STREAM = "stream"
 
 
-_ITINERARY_START = date.today()
+_ITINERARY_START = date(2027, 3, 3)
 
 itinerary_req = ItineraryRequest(
     duration=6,
     dates=[(_ITINERARY_START + timedelta(days=offset)).isoformat() for offset in range(6)],
-    interests=["wellness", "temples", "activities"],
-    budget="US$ 1500",
+    interests=["water sports", "traditional markets", "cultural", "activities"],
+    budget="US$ 2500",
 )
 
 inquiry = EmailInquiry(
@@ -101,9 +101,7 @@ def _require_api_key(config: ProviderConfig, provider: Prv) -> str:
 
 def _collected(display_name: str, path: Path) -> str:
 
-    return (
-        f"[b green] All [b i magenta]{display_name}[/b i magenta] models have been collected in {path}"
-    )
+    return f"[b green] All [b i magenta]{display_name}[/b i magenta] models have been collected in {path}"
 
 
 async def _collect_models(kwargs: dict[Prv, ProviderConfig]) -> None:
