@@ -27,6 +27,8 @@ class Settings(BaseSettings):
     TZ: str = "Asia/Makassar"
 
     # AI Configuration
+    OPENLLM_API_KEY: str
+    EXPLABS_API_KEY: str
     INCEPTION_API_KEY: str
     OPENROUTER_API_KEY: str
     NVIDIA_API_KEY: str
@@ -56,6 +58,12 @@ class Settings(BaseSettings):
     MISTRAL_BASE_URL: str = "https://api.mistral.ai"
     MISTRAL_MODEL: str = "mistral-large-latest"
 
+    OPENLLM_BASE_URL: str = "https://www.openllm.sh/v1"
+    OPENLLM_MODEL: str = "openllm/deepseek-v4.1-flash"
+
+    EXPLABS_BASE_URL: str = "https://api.experientiallabs.ai/v1"
+    EXPLABS_MODEL: str = "mistral-large-latest"
+
     AI_REQUEST_TIMEOUT: int = 60  # seconds
     AI_MAX_RETRIES: int = 2
     AI_RETRY_DELAY: float = 1.0  # seconds
@@ -72,6 +80,8 @@ _PROVIDER_DISPLAY_NAMES: dict[str, str] = {
     "openrouter": "Open Router",
     "nvidia": "NVIDIA",
     "mistral": "Mistral",
+    "openllm": "OpenLLM",
+    "explabs": "ExpLabs",
 }
 
 
@@ -82,6 +92,8 @@ class Providers(StrEnum):
     OPENROUTER = "openrouter"
     NVIDIA = "nvidia"
     MISTRAL = "mistral"
+    OPENLLM = "openllm"
+    EXPLABS = "explabs"
 
     @property
     def display_name(self) -> str:

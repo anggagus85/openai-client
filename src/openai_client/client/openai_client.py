@@ -176,6 +176,11 @@ class OpenAIClient(AsyncOpenAI):
             logger.info("AI client closed successfully")
 
     async def list_models(self, path: Path) -> None:
+
+        if self._prv == Prv.EXPLABS:
+            # explabs model always changes, check on the platform.
+            return
+
         model_list = await self.models.list()
 
         models: list[str] = []

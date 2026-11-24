@@ -173,6 +173,16 @@ async def main() -> None:
             "base_url": settings.MISTRAL_BASE_URL,
             "model": settings.MISTRAL_MODEL,
         },
+        Prv.OPENLLM: {
+            "api_key": settings.OPENLLM_API_KEY,
+            "base_url": settings.OPENLLM_BASE_URL,
+            "model": settings.OPENLLM_MODEL,
+        },
+        Prv.EXPLABS: {
+            "api_key": settings.EXPLABS_API_KEY,
+            "base_url": settings.EXPLABS_BASE_URL,
+            "model": settings.EXPLABS_MODEL,
+        },
     }
 
     # ------------
@@ -192,7 +202,7 @@ async def main() -> None:
     # finally:
     #     await mistral.close()
 
-    # provider = Prv.ATMOROUTER
+    # provider = Prv.EXPLABS
     # config = kwargs[provider]
     # client = OpenAIClient(
     #     api_key=_require_api_key(config, provider),

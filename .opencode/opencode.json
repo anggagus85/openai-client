@@ -5,9 +5,10 @@
             "python-refactoring": {
                 "type": "local",
                 "command": [
-                    "uvx",
-                    "--from",
-                    "git+https://github.com/slamer59/mcp-python-refactoring.git",
+                    "uv",
+                    "--directory",
+                    "/Users/madesuryawan/mcp-python-refactoring",
+                    "run",
                     "python-refactor",
                     "server"
                 ],
